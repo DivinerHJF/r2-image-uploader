@@ -56,10 +56,10 @@
           <input id="file-input" type="file" accept="image/*" multiple hidden />
           <div class="drop-icon" aria-hidden="true">⇪</div>
           <p><strong>拖拽图片到这里</strong>，或点击选择文件</p>
-          <p id="drop-help" class="muted">支持多图上传；上传前可逐张本地裁剪，再缩放到最长边 1600px 并输出 WebP。</p>
+          <p id="drop-help" class="muted">支持多图上传；选择图片后会先逐张进入本地裁剪流程，再缩放到最长边 1600px 并输出 WebP。</p>
         </div>
         <div id="file-list" class="file-list" aria-live="polite"></div>
-        <button id="upload-button" class="primary-button" type="button" disabled>上传图片</button>
+        <button id="upload-button" class="primary-button" type="button" disabled>裁剪并上传</button>
       </section>
 
       <section class="card results-card" aria-labelledby="results-title">

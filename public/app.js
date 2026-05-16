@@ -35,6 +35,7 @@ const cancelCropSecondaryButton = document.querySelector("#cancel-crop-button");
 let selectedFiles = [];
 let markdownLinks = [];
 let cropper = null;
+let isUploading = false;
 
 class UploadCancelledError extends Error {
   constructor() {
@@ -99,10 +100,20 @@ function renderFileList() {
 function selectFiles(files) {
   selectedFiles = Array.from(files).filter((file) => file.type.startsWith("image/"));
   renderFileList();
-  setStatus(
-    selectedFiles.length ? `已选择 ${selectedFiles.length} 张图片。点击上传后会逐张裁剪。` : "请选择图片文件。",
-    selectedFiles.length ? "" : "error",
-  );
+
+  if (!selectedFiles.length) {
+    setStatus("请选择图片文件。", "error");
+    return;
+  }
+
+  if (!tokenInput.value.trim()) {
+    setStatus(`已选择 ${selectedFiles.length} 张图片。请输入上传 Token 后点击“裁剪并上传”。`);
+    tokenInput.focus();
+    return;
+  }
+
+  setStatus(`已选择 ${selectedFiles.length} 张图片，即将进入裁剪流程。`);
+  void handleUpload();
 }
 
 function loadImage(file) {
@@ -308,6 +319,10 @@ function openCropDialog(file, index, total) {
   });
 }
 
+async function getCanvasForUpload(file, index, total) {
+  return openCropDialog(file, index, total);
+}
+
 async function uploadOne({ file, blob, key, token }) {
   const formData = new FormData();
   formData.append("file", blob, key.split("/").at(-1));
@@ -365,6 +380,8 @@ function renderResult({ file, key, url }) {
 }
 
 async function handleUpload() {
+  if (isUploading) return;
+
   const token = tokenInput.value.trim();
   const category = categorySelect.value;
   const baseSlug = slugify(slugInput.value.trim() || selectedFiles[0]?.name || "image");
@@ -380,6 +397,7 @@ async function handleUpload() {
     return;
   }
 
+  isUploading = true;
   uploadButton.disabled = true;
   resultsBox.innerHTML = "";
   markdownLinks = [];
@@ -387,8 +405,8 @@ async function handleUpload() {
 
   try {
     for (const [index, file] of selectedFiles.entries()) {
-      setStatus(`正在裁剪 ${index + 1}/${selectedFiles.length}：${file.name}`);
-      const canvas = await openCropDialog(file, index + 1, selectedFiles.length);
+      setStatus(`正在打开裁剪界面 ${index + 1}/${selectedFiles.length}：${file.name}`);
+      const canvas = await getCanvasForUpload(file, index + 1, selectedFiles.length);
       setStatus(`正在压缩并上传 ${index + 1}/${selectedFiles.length}：${file.name}`);
       const blob = await compressCanvasToWebP(canvas, file.name);
       const key = buildKey(category, baseSlug, index + 1);
@@ -401,6 +419,7 @@ async function handleUpload() {
     const isCancel = error instanceof UploadCancelledError;
     setStatus(error instanceof Error ? error.message : "上传失败，请稍后重试。", isCancel ? "" : "error");
   } finally {
+    isUploading = false;
     uploadButton.disabled = selectedFiles.length === 0;
   }
 }
@@ -428,7 +447,10 @@ dropZone.addEventListener("keydown", (event) => {
 });
 
 dropZone.addEventListener("drop", (event) => selectFiles(event.dataTransfer.files));
-fileInput.addEventListener("change", (event) => selectFiles(event.target.files));
+fileInput.addEventListener("change", (event) => {
+  selectFiles(event.target.files);
+  event.target.value = "";
+});
 uploadButton.addEventListener("click", handleUpload);
 copyMarkdownButton.addEventListener("click", async () => {
   await navigator.clipboard.writeText(markdownLinks.join("\n"));
