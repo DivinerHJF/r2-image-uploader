@@ -109,6 +109,13 @@ small, .muted { color: var(--muted); }
 }
 
 
+.upload-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 18px;
+}
+
 .drop-zone {
   align-items: center;
   border: 2px dashed #9fb3c8;
@@ -245,6 +252,7 @@ button:disabled { cursor: not-allowed; opacity: 0.52; }
   .results-header { align-items: stretch; flex-direction: column; }
   .copy-toolbar { align-items: stretch; flex-direction: column; }
   .secondary-button, .primary-button { width: 100%; }
+  .upload-actions { flex-direction: column; }
   .file-item { grid-template-columns: auto minmax(0, 1fr); }
   .file-actions { grid-column: 2; }
 }
@@ -327,8 +335,13 @@ body.modal-open { overflow: hidden; }
   max-width: 100%;
 }
 
-.crop-ratio-field {
+.crop-settings {
   align-self: start;
+  display: grid;
+  gap: 14px;
+}
+
+.crop-control-field {
   background: #f8fafc;
   border: 1px solid var(--border);
   border-radius: 16px;
