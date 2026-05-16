@@ -25,6 +25,7 @@ const dropZone = document.querySelector("#drop-zone");
 const fileInput = document.querySelector("#file-input");
 const fileList = document.querySelector("#file-list");
 const uploadButton = document.querySelector("#upload-button");
+const directUploadButton = document.querySelector("#direct-upload-button");
 const statusBox = document.querySelector("#status");
 const resultsBox = document.querySelector("#results");
 const copyMarkdownButton = document.querySelector("#copy-markdown");
@@ -33,6 +34,7 @@ const copySelectedFormatButton = document.querySelector("#copy-selected-format")
 const cropModal = document.querySelector("#crop-modal");
 const cropImage = document.querySelector("#crop-image");
 const cropRatioSelect = document.querySelector("#crop-ratio");
+const cropAltInput = document.querySelector("#crop-alt");
 const cropFilename = document.querySelector("#crop-filename");
 const cropProgress = document.querySelector("#crop-progress");
 const confirmCropButton = document.querySelector("#confirm-crop");
@@ -134,7 +136,9 @@ function moveSelectedFile(fromIndex, toIndex) {
 
 function renderFileList() {
   fileList.innerHTML = "";
-  uploadButton.disabled = selectedFiles.length === 0 || isUploading;
+  const isUploadDisabled = selectedFiles.length === 0 || isUploading;
+  uploadButton.disabled = isUploadDisabled;
+  directUploadButton.disabled = isUploadDisabled;
 
   selectedFiles.forEach((file, index) => {
     const item = document.createElement("div");
@@ -190,8 +194,8 @@ function selectFiles(files) {
   }
 
   // 选择或拖入图片后只进入待上传列表，确保用户可以先排序；
-  // 裁剪、压缩和上传只能由“裁剪并上传”按钮显式触发。
-  setStatus(`已选择 ${selectedFiles.length} 张图片。请先拖拽排序，确认顺序后再点击“裁剪并上传”。`);
+  // 修改、压缩和上传只能由上传按钮显式触发。
+  setStatus(`已选择 ${selectedFiles.length} 张图片。请先拖拽排序，确认顺序后再选择“修改并上传”或“直接上传”。`);
 }
 
 function loadImage(file) {
@@ -303,7 +307,7 @@ function destroyCropper() {
   }
 }
 
-function openCropDialog(file, index, total) {
+function openCropDialog(file, index, total, initialAlt) {
   const Cropper = window.Cropper;
   if (!Cropper) {
     throw new Error("裁剪组件加载失败，请刷新页面后重试。");
@@ -327,8 +331,11 @@ function openCropDialog(file, index, total) {
       cropImage.onload = null;
       cropImage.onerror = null;
       cropImage.removeAttribute("src");
+      cropAltInput.value = "";
       setModalOpen(false);
     };
+
+    const getCurrentAlt = () => cropAltInput.value.trim() || initialAlt;
 
     const handleConfirm = () => {
       if (!cropper) return;
@@ -336,15 +343,17 @@ function openCropDialog(file, index, total) {
         imageSmoothingEnabled: true,
         imageSmoothingQuality: "high",
       });
+      const alt = getCurrentAlt();
       cleanup();
-      resolve(canvas);
+      resolve({ canvas, alt });
     };
 
     const handleSkip = async () => {
       try {
+        const alt = getCurrentAlt();
         cleanup();
         const canvas = await originalCanvasFromFile(file);
-        resolve(canvas);
+        resolve({ canvas, alt });
       } catch (error) {
         reject(error);
       }
@@ -373,6 +382,7 @@ function openCropDialog(file, index, total) {
     cropFilename.textContent = file.name;
     cropProgress.textContent = `${index}/${total}`;
     cropRatioSelect.value = "free";
+    cropAltInput.value = initialAlt;
     cropImage.onload = () => {
       if (!isActive) return;
       destroyCropper();
@@ -488,7 +498,7 @@ async function copyFormat(format) {
   setStatus(`${label} 链接已复制。`, "success");
 }
 
-async function handleUpload() {
+async function handleUpload({ withEditDialog = true } = {}) {
   if (isUploading) return;
 
   const token = tokenInput.value.trim();
@@ -517,8 +527,20 @@ async function handleUpload() {
   try {
     for (const [index, file] of selectedFiles.entries()) {
       const sequence = index + 1;
-      setStatus(`正在打开裁剪界面 ${sequence}/${selectedFiles.length}：${file.name}`);
-      const canvas = await openCropDialog(file, sequence, selectedFiles.length);
+      const defaultAlt = buildAltText(baseAlt, baseSlug, sequence, selectedFiles.length);
+      let canvas;
+      let alt = defaultAlt;
+
+      if (withEditDialog) {
+        setStatus(`正在打开修改界面 ${sequence}/${selectedFiles.length}：${file.name}`);
+        const edited = await openCropDialog(file, sequence, selectedFiles.length, defaultAlt);
+        canvas = edited.canvas;
+        alt = edited.alt;
+      } else {
+        setStatus(`正在读取原图 ${sequence}/${selectedFiles.length}：${file.name}`);
+        canvas = await originalCanvasFromFile(file);
+      }
+
       setStatus(`正在浏览器端压缩 ${sequence}/${selectedFiles.length}：${file.name}`);
       const compressed = await compressCanvasToWebP(canvas, file.name);
       const key = buildKey({
@@ -528,7 +550,6 @@ async function handleUpload() {
         index: sequence,
         mode: namingMode,
       });
-      const alt = buildAltText(baseAlt, baseSlug, sequence, selectedFiles.length);
       setStatus(`正在上传 ${sequence}/${selectedFiles.length}：${file.name}`);
       const result = await uploadOne({ file, blob: compressed.blob, key, token });
       renderResult({
@@ -602,6 +623,7 @@ fileList.addEventListener("dragend", () => {
   draggedFileIndex = null;
   fileList.querySelectorAll(".file-item").forEach((item) => item.classList.remove("is-dragging"));
 });
-uploadButton.addEventListener("click", handleUpload);
+uploadButton.addEventListener("click", () => handleUpload({ withEditDialog: true }));
+directUploadButton.addEventListener("click", () => handleUpload({ withEditDialog: false }));
 copyMarkdownButton.addEventListener("click", () => copyFormat("markdown"));
 copySelectedFormatButton.addEventListener("click", () => copyFormat(copyFormatSelect.value));

@@ -84,10 +84,13 @@
           <input id="file-input" type="file" accept="image/*" multiple hidden />
           <div class="drop-icon" aria-hidden="true">⇪</div>
           <p><strong>拖拽图片到这里</strong>，或点击选择文件</p>
-          <p id="drop-help" class="muted">支持多图上传；选择后不会自动裁剪或上传，请先拖拽下方文件条目排序，再点击按钮按顺序裁剪。</p>
+          <p id="drop-help" class="muted">支持多图上传；选择后不会自动裁剪或上传，请先拖拽下方文件条目排序；可点击“修改并上传”逐张调整裁剪和 Alt，或点击“直接上传”按顺序上传。</p>
         </div>
         <div id="file-list" class="file-list" aria-live="polite"></div>
-        <button id="upload-button" class="primary-button" type="button" disabled>裁剪并上传</button>
+        <div class="upload-actions">
+          <button id="upload-button" class="primary-button" type="button" disabled>修改并上传</button>
+          <button id="direct-upload-button" class="secondary-button" type="button" disabled>直接上传</button>
+        </div>
       </section>
 
       <section class="card results-card" aria-labelledby="results-title">
@@ -119,10 +122,10 @@
         <div class="crop-header">
           <div>
             <p id="crop-progress" class="eyebrow crop-step">1/1</p>
-            <h2 id="crop-title">裁剪图片</h2>
+            <h2 id="crop-title">修改图片</h2>
             <p id="crop-filename" class="muted crop-filename"></p>
           </div>
-          <button id="cancel-crop" class="icon-button" type="button" aria-label="取消裁剪">×</button>
+          <button id="cancel-crop" class="icon-button" type="button" aria-label="取消修改">×</button>
         </div>
 
         <div class="crop-body">
@@ -130,23 +133,31 @@
             <img id="crop-image" alt="待裁剪图片预览" />
           </div>
 
-          <label class="field crop-ratio-field" for="crop-ratio">
-            <span>裁剪比例</span>
-            <select id="crop-ratio" name="crop-ratio">
-              <option value="free">自由裁剪</option>
-              <option value="original">原图比例</option>
-              <option value="1:1">1:1</option>
-              <option value="4:3">4:3</option>
-              <option value="3:2">3:2</option>
-              <option value="16:9">16:9</option>
-              <option value="9:16">9:16</option>
-            </select>
-          </label>
+          <div class="crop-settings">
+            <label class="field crop-control-field" for="crop-ratio">
+              <span>裁剪比例</span>
+              <select id="crop-ratio" name="crop-ratio">
+                <option value="free">自由裁剪</option>
+                <option value="original">原图比例</option>
+                <option value="1:1">1:1</option>
+                <option value="4:3">4:3</option>
+                <option value="3:2">3:2</option>
+                <option value="16:9">16:9</option>
+                <option value="9:16">9:16</option>
+              </select>
+            </label>
+
+            <label class="field crop-control-field" for="crop-alt">
+              <span>当前图片 Alt</span>
+              <input id="crop-alt" name="crop-alt" type="text" />
+              <small>默认按上传设置自动生成，可在上传前为当前图片单独修改。</small>
+            </label>
+          </div>
         </div>
 
         <div class="crop-actions">
-          <button id="confirm-crop" class="primary-button" type="button">确认裁剪并上传</button>
-          <button id="skip-crop" class="secondary-button" type="button">跳过裁剪</button>
+          <button id="confirm-crop" class="primary-button" type="button">确认修改并上传</button>
+          <button id="skip-crop" class="secondary-button" type="button">不裁剪，仅上传</button>
           <button id="cancel-crop-button" class="secondary-button danger-button" type="button">取消</button>
         </div>
       </div>
