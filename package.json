@@ -1,0 +1,12 @@
+{
+  "name": "r2-image-uploader",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Cloudflare Pages R2 image uploader for a personal Hugo blog image host.",
+  "type": "module",
+  "scripts": {
+    "dev": "npx wrangler pages dev public --compatibility-date=2026-05-16",
+    "build": "echo \"No build step required. Static files and Pages Functions are ready.\"",
+    "check": "tsc --noEmit && node --check public/app.js"
+  }
+}
