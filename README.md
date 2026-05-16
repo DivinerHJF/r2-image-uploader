@@ -8,31 +8,49 @@
 
 核心流程：
 
-1. 在浏览器中选择或拖拽图片。
+1. 在浏览器中选择或拖拽图片，并可在上传前通过拖拽文件条目调整多图顺序。
 2. 浏览器本地弹出裁剪界面，可选择裁剪比例或跳过裁剪。
-3. 浏览器本地通过 Canvas 将裁剪结果压缩并转换为 WebP。
-4. 按分类、年月、slug 和序号生成 R2 对象路径。
+3. 浏览器本地按所选压缩预设通过 Canvas 将裁剪结果压缩并转换为 WebP。
+4. 浏览器端按所选重命名规则生成 R2 对象路径，不扫描 R2 bucket。
 5. 通过 Cloudflare Pages Function 写入 R2 bucket。
-6. 返回公开图片 URL 和 Markdown 图片链接。
+6. 返回公开图片 URL、压缩前后体积对比，以及 Markdown / HTML / Hugo figure 复制格式。
 
-生成的 R2 key 格式：
+默认生成的 R2 key 格式：
 
 ```text
 category/YYYY/MM/slug-序号.webp
+```
+
+也可以在上传前选择其他浏览器端重命名规则：
+
+```text
+category/slug-序号.webp
+YYYY/MM/category/slug-序号.webp
+category/YYYY/MM/slug-时间戳-序号.webp
+category/YYYY/MM/原文件名-序号.webp
 ```
 
 示例：
 
 ```text
 blog/2026/05/hugo-pages-cms-01.webp
-travel/2026/05/los-angeles-01.webp
-books/2026/05/book-cover-01.webp
+travel/los-angeles-01.webp
+2026/05/books/book-cover-01.webp
+misc/2026/05/screenshot-20260516-153000-01.webp
 ```
 
-Markdown 示例：
+复制格式示例：
 
 ```markdown
-![hugo-pages-cms](https://img.philohao.com/blog/2026/05/hugo-pages-cms-01.webp)
+![Hugo Pages CMS 截图](https://img.philohao.com/blog/2026/05/hugo-pages-cms-01.webp)
+```
+
+```html
+<img src="https://img.philohao.com/blog/2026/05/hugo-pages-cms-01.webp" alt="Hugo Pages CMS 截图" loading="lazy">
+```
+
+```go-html-template
+{{< figure src="https://img.philohao.com/blog/2026/05/hugo-pages-cms-01.webp" alt="Hugo Pages CMS 截图" >}}
 ```
 
 ## 图片裁剪
@@ -49,7 +67,46 @@ Markdown 示例：
 - 16:9
 - 9:16
 
-裁剪完全发生在浏览器本地：原图不会因为裁剪功能而额外上传到服务器。只有确认裁剪或跳过裁剪后生成的最终 WebP 文件会通过 `/api/upload` 上传到 R2。默认最大宽度和高度均为 1600px，WebP quality 为 0.82。
+裁剪完全发生在浏览器本地：原图不会因为裁剪功能而额外上传到服务器。只有确认裁剪或跳过裁剪后生成的最终 WebP 文件会通过 `/api/upload` 上传到 R2。
+
+## 浏览器端轻量功能
+
+新增功能仍遵循“尽量在浏览器端完成”的原则，不增加数据库、不引入 Cloudflare Images、不做服务端图片处理、不扫描 R2 bucket，因此不会因为这些功能增加 Cloudflare 侧图片处理或存储扫描成本。
+
+### 压缩预设和体积对比
+
+上传前可以选择压缩预设：
+
+- 均衡：最长边 1600px，WebP quality 0.82。
+- 轻量：最长边 1200px，WebP quality 0.72。
+- 高清：最长边 2200px，WebP quality 0.9。
+- 仅转 WebP：保留原尺寸，WebP quality 0.86。
+
+每张图上传成功后都会显示原始体积、压缩后体积、节省或增加的大小和百分比，以及压缩后的像素尺寸。
+
+### Alt 文本与多格式复制
+
+上传设置中可以输入 Alt 文本。单图会直接使用该 Alt；多图会按当前排序自动追加 `01`、`02` 等序号。留空时使用 slug 作为 Alt 基础值。
+
+上传结果会同时生成：
+
+- Markdown：`![alt](url)`
+- HTML：`<img src="url" alt="alt" loading="lazy">`
+- Hugo figure：`{{< figure src="url" alt="alt" >}}`
+
+可以一键复制全部 Markdown，也可以通过“复制格式”选择 Markdown / HTML / Hugo figure 并批量复制当前所有上传结果。
+
+### 多图排序与命名规则
+
+多图选择后，可以拖拽文件条目或使用上下箭头调整顺序。上传顺序、序号、Alt 序号和批量复制结果都按当前列表顺序生成。
+
+可选命名规则全部在浏览器端生成 key：
+
+- `category/YYYY/MM/slug-序号.webp`
+- `category/slug-序号.webp`
+- `YYYY/MM/category/slug-序号.webp`
+- `category/YYYY/MM/slug-时间戳-序号.webp`
+- `category/YYYY/MM/原文件名-序号.webp`
 
 ## 本地开发
 
@@ -185,11 +242,12 @@ openssl rand -base64 48
 1. 打开上传器：`https://img-admin.philohao.com`。
 2. 在“上传 Token”中输入 Cloudflare Pages Secret 配置的 token。
 3. 选择分类：`blog`、`travel`、`books` 或 `misc`。
-4. 输入 slug，例如 `hugo-pages-cms`。如果留空，会基于第一个原始文件名自动生成安全 slug。
-5. 拖拽或选择一张或多张图片；如果已经输入上传 Token，会立即逐张打开裁剪弹窗。
-6. 如果先选择图片再输入 Token，请点击“裁剪并上传”，然后在裁剪弹窗中为每张图片选择比例并确认，或点击“跳过裁剪”。
-7. 上传成功后复制 Markdown 链接。
-8. 将 Markdown 链接粘贴到 Pages CMS / Hugo 文章正文。
+4. 输入 slug 和可选 Alt 文本；slug 留空时会基于第一个原始文件名自动生成安全 slug。
+5. 选择压缩预设和上传前重命名规则。
+6. 拖拽或选择一张或多张图片，并按需要拖拽文件条目排序。
+7. 点击“裁剪并上传”，然后在裁剪弹窗中为每张图片选择比例并确认，或点击“跳过裁剪”。
+8. 上传成功后查看压缩前后体积对比，并复制全部 Markdown 或所选 Markdown / HTML / Hugo figure 格式。
+9. 将复制结果粘贴到 Pages CMS / Hugo 文章正文。
 
 ## 安全注意事项
 

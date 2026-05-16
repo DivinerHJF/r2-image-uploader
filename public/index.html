@@ -47,6 +47,34 @@
             <input id="slug" name="slug" type="text" placeholder="例如 hugo-pages-cms" />
             <small>留空时会根据第一个文件名自动生成安全 slug。</small>
           </label>
+
+          <label class="field" for="alt-text">
+            <span>Alt 文本</span>
+            <input id="alt-text" name="alt-text" type="text" placeholder="例如 Hugo Pages CMS 截图" />
+            <small>留空时使用 slug；多图会自动追加序号。</small>
+          </label>
+
+          <label class="field" for="compression-preset">
+            <span>压缩预设</span>
+            <select id="compression-preset" name="compression-preset">
+              <option value="balanced">均衡：最长边 1600px · quality 0.82</option>
+              <option value="small">轻量：最长边 1200px · quality 0.72</option>
+              <option value="large">高清：最长边 2200px · quality 0.9</option>
+              <option value="original">仅转 WebP：保留尺寸 · quality 0.86</option>
+            </select>
+          </label>
+
+          <label class="field field-wide" for="naming-mode">
+            <span>上传前重命名规则</span>
+            <select id="naming-mode" name="naming-mode">
+              <option value="category-date-sequence">category/YYYY/MM/slug-序号.webp</option>
+              <option value="category-sequence">category/slug-序号.webp</option>
+              <option value="date-category-sequence">YYYY/MM/category/slug-序号.webp</option>
+              <option value="category-timestamp">category/YYYY/MM/slug-时间戳-序号.webp</option>
+              <option value="category-original">category/YYYY/MM/原文件名-序号.webp</option>
+            </select>
+            <small>所有 key 均在浏览器端生成；不会扫描 R2 bucket。</small>
+          </label>
         </div>
       </section>
 
@@ -56,7 +84,7 @@
           <input id="file-input" type="file" accept="image/*" multiple hidden />
           <div class="drop-icon" aria-hidden="true">⇪</div>
           <p><strong>拖拽图片到这里</strong>，或点击选择文件</p>
-          <p id="drop-help" class="muted">支持多图上传；选择图片后会先逐张进入本地裁剪流程，再缩放到最长边 1600px 并输出 WebP。</p>
+          <p id="drop-help" class="muted">支持多图上传；拖拽下方文件条目可排序，上传和批量复制会按当前顺序生成。</p>
         </div>
         <div id="file-list" class="file-list" aria-live="polite"></div>
         <button id="upload-button" class="primary-button" type="button" disabled>裁剪并上传</button>
@@ -66,9 +94,20 @@
         <div class="results-header">
           <div>
             <h2 id="results-title">上传结果</h2>
-            <p class="muted">上传成功后会显示公开 URL 和 Markdown 链接。</p>
+            <p class="muted">上传成功后会显示体积对比、公开 URL 和多种复制格式。</p>
           </div>
-          <button id="copy-markdown" class="secondary-button" type="button" disabled>复制 Markdown</button>
+          <div class="copy-toolbar">
+            <label class="field inline-field" for="copy-format">
+              <span>复制格式</span>
+              <select id="copy-format" name="copy-format">
+                <option value="markdown">Markdown</option>
+                <option value="html">HTML</option>
+                <option value="hugo">Hugo figure</option>
+              </select>
+            </label>
+            <button id="copy-selected-format" class="secondary-button" type="button" disabled>复制所选格式</button>
+            <button id="copy-markdown" class="secondary-button" type="button" disabled>一键复制全部 Markdown</button>
+          </div>
         </div>
         <div id="status" class="status" role="status" aria-live="polite"></div>
         <div id="results" class="results"></div>
