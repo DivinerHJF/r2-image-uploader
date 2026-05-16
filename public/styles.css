@@ -187,3 +187,109 @@ button:disabled { cursor: not-allowed; opacity: 0.52; }
   .results-header { align-items: stretch; flex-direction: column; }
   .secondary-button, .primary-button { width: 100%; }
 }
+
+body.modal-open { overflow: hidden; }
+
+.crop-modal {
+  align-items: center;
+  background: rgba(15, 23, 42, 0.72);
+  display: flex;
+  inset: 0;
+  justify-content: center;
+  padding: 20px;
+  position: fixed;
+  z-index: 1000;
+}
+
+.crop-modal[hidden] { display: none; }
+
+.crop-dialog {
+  background: var(--card);
+  border-radius: 24px;
+  box-shadow: 0 24px 80px rgba(15, 23, 42, 0.34);
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  max-height: calc(100vh - 40px);
+  overflow: auto;
+  padding: 22px;
+  width: min(960px, 100%);
+}
+
+.crop-header {
+  align-items: flex-start;
+  display: flex;
+  gap: 16px;
+  justify-content: space-between;
+}
+
+.crop-step { margin: 0 0 8px; }
+.crop-filename { margin: 8px 0 0; overflow-wrap: anywhere; }
+
+.icon-button {
+  align-items: center;
+  background: #eef2f7;
+  border: 0;
+  border-radius: 999px;
+  color: var(--text);
+  cursor: pointer;
+  display: inline-flex;
+  flex: 0 0 auto;
+  font: inherit;
+  font-size: 1.35rem;
+  font-weight: 800;
+  height: 40px;
+  justify-content: center;
+  line-height: 1;
+  width: 40px;
+}
+
+.crop-body {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: minmax(0, 1fr) 220px;
+}
+
+.crop-preview {
+  align-items: center;
+  background: #0f172a;
+  border-radius: 18px;
+  display: flex;
+  justify-content: center;
+  min-height: 320px;
+  overflow: hidden;
+}
+
+.crop-preview img {
+  display: block;
+  max-height: min(62vh, 640px);
+  max-width: 100%;
+}
+
+.crop-ratio-field {
+  align-self: start;
+  background: #f8fafc;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 14px;
+}
+
+.crop-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  justify-content: flex-end;
+}
+
+.danger-button { background: #fee2e2; color: var(--danger); }
+
+@media (max-width: 700px) {
+  .crop-modal { align-items: stretch; padding: 10px; }
+  .crop-dialog { border-radius: 18px; max-height: calc(100vh - 20px); padding: 16px; }
+  .crop-body { grid-template-columns: 1fr; }
+  .crop-preview { min-height: 260px; }
+  .crop-preview img { max-height: 52vh; }
+  .crop-actions { flex-direction: column; }
+  .crop-actions .primary-button,
+  .crop-actions .secondary-button { width: 100%; }
+}

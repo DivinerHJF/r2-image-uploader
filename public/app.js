@@ -2,6 +2,15 @@ const MAX_WIDTH = 1600;
 const MAX_HEIGHT = 1600;
 const WEBP_QUALITY = 0.82;
 const CATEGORIES = new Set(["blog", "travel", "books", "misc"]);
+const ASPECT_RATIOS = {
+  free: NaN,
+  original: null,
+  "1:1": 1,
+  "4:3": 4 / 3,
+  "3:2": 3 / 2,
+  "16:9": 16 / 9,
+  "9:16": 9 / 16,
+};
 
 const tokenInput = document.querySelector("#token");
 const categorySelect = document.querySelector("#category");
@@ -13,9 +22,26 @@ const uploadButton = document.querySelector("#upload-button");
 const statusBox = document.querySelector("#status");
 const resultsBox = document.querySelector("#results");
 const copyMarkdownButton = document.querySelector("#copy-markdown");
+const cropModal = document.querySelector("#crop-modal");
+const cropImage = document.querySelector("#crop-image");
+const cropRatioSelect = document.querySelector("#crop-ratio");
+const cropFilename = document.querySelector("#crop-filename");
+const cropProgress = document.querySelector("#crop-progress");
+const confirmCropButton = document.querySelector("#confirm-crop");
+const skipCropButton = document.querySelector("#skip-crop");
+const cancelCropButton = document.querySelector("#cancel-crop");
+const cancelCropSecondaryButton = document.querySelector("#cancel-crop-button");
 
 let selectedFiles = [];
 let markdownLinks = [];
+let cropper = null;
+
+class UploadCancelledError extends Error {
+  constructor() {
+    super("已取消上传。");
+    this.name = "UploadCancelledError";
+  }
+}
 
 function setStatus(message, type = "") {
   statusBox.textContent = message;
@@ -73,7 +99,10 @@ function renderFileList() {
 function selectFiles(files) {
   selectedFiles = Array.from(files).filter((file) => file.type.startsWith("image/"));
   renderFileList();
-  setStatus(selectedFiles.length ? `已选择 ${selectedFiles.length} 张图片。` : "请选择图片文件。", selectedFiles.length ? "" : "error");
+  setStatus(
+    selectedFiles.length ? `已选择 ${selectedFiles.length} 张图片。点击上传后会逐张裁剪。` : "请选择图片文件。",
+    selectedFiles.length ? "" : "error",
+  );
 }
 
 function loadImage(file) {
@@ -103,9 +132,22 @@ function calculateSize(width, height) {
   };
 }
 
-async function compressToWebP(file) {
-  const image = await loadImage(file);
-  const { width, height } = calculateSize(image.naturalWidth, image.naturalHeight);
+function canvasFromImage(image) {
+  const canvas = document.createElement("canvas");
+  canvas.width = image.naturalWidth;
+  canvas.height = image.naturalHeight;
+
+  const context = canvas.getContext("2d");
+  if (!context) {
+    throw new Error("当前浏览器不支持 Canvas 处理。请更换浏览器后重试。");
+  }
+
+  context.drawImage(image, 0, 0);
+  return canvas;
+}
+
+function resizeCanvas(sourceCanvas) {
+  const { width, height } = calculateSize(sourceCanvas.width, sourceCanvas.height);
   const canvas = document.createElement("canvas");
   canvas.width = width;
   canvas.height = height;
@@ -115,13 +157,16 @@ async function compressToWebP(file) {
     throw new Error("当前浏览器不支持 Canvas 压缩。请更换浏览器后重试。");
   }
 
-  context.drawImage(image, 0, 0, width, height);
+  context.drawImage(sourceCanvas, 0, 0, width, height);
+  return canvas;
+}
 
+function canvasToWebPBlob(canvas, fileName) {
   return new Promise((resolve, reject) => {
     canvas.toBlob(
       (blob) => {
         if (!blob) {
-          reject(new Error(`压缩失败：${file.name}`));
+          reject(new Error(`压缩失败：${fileName}`));
           return;
         }
         resolve(blob);
@@ -129,6 +174,137 @@ async function compressToWebP(file) {
       "image/webp",
       WEBP_QUALITY,
     );
+  });
+}
+
+async function compressCanvasToWebP(sourceCanvas, fileName) {
+  const resizedCanvas = resizeCanvas(sourceCanvas);
+  return canvasToWebPBlob(resizedCanvas, fileName);
+}
+
+async function originalCanvasFromFile(file) {
+  const image = await loadImage(file);
+  return canvasFromImage(image);
+}
+
+function getSelectedAspectRatio(originalRatio) {
+  const selected = ASPECT_RATIOS[cropRatioSelect.value];
+  return selected === null ? originalRatio : selected;
+}
+
+function setModalOpen(isOpen) {
+  cropModal.hidden = !isOpen;
+  document.body.classList.toggle("modal-open", isOpen);
+}
+
+function destroyCropper() {
+  if (cropper) {
+    cropper.destroy();
+    cropper = null;
+  }
+}
+
+function openCropDialog(file, index, total) {
+  const Cropper = window.Cropper;
+  if (!Cropper) {
+    throw new Error("裁剪组件加载失败，请刷新页面后重试。");
+  }
+
+  return new Promise((resolve, reject) => {
+    const imageUrl = URL.createObjectURL(file);
+    let isActive = true;
+
+    const cleanup = () => {
+      isActive = false;
+      confirmCropButton.removeEventListener("click", handleConfirm);
+      skipCropButton.removeEventListener("click", handleSkip);
+      cancelCropButton.removeEventListener("click", handleCancel);
+      cancelCropSecondaryButton.removeEventListener("click", handleCancel);
+      cropRatioSelect.removeEventListener("change", handleRatioChange);
+      cropModal.removeEventListener("click", handleBackdropClick);
+      document.removeEventListener("keydown", handleKeydown);
+      destroyCropper();
+      URL.revokeObjectURL(imageUrl);
+      cropImage.onload = null;
+      cropImage.onerror = null;
+      cropImage.removeAttribute("src");
+      setModalOpen(false);
+    };
+
+    const handleConfirm = () => {
+      if (!cropper) return;
+      const canvas = cropper.getCroppedCanvas({
+        imageSmoothingEnabled: true,
+        imageSmoothingQuality: "high",
+      });
+      cleanup();
+      resolve(canvas);
+    };
+
+    const handleSkip = async () => {
+      try {
+        cleanup();
+        const canvas = await originalCanvasFromFile(file);
+        resolve(canvas);
+      } catch (error) {
+        reject(error);
+      }
+    };
+
+    const handleCancel = () => {
+      cleanup();
+      reject(new UploadCancelledError());
+    };
+
+    const handleRatioChange = () => {
+      if (!cropper) return;
+      const imageData = cropper.getImageData();
+      const ratio = getSelectedAspectRatio(imageData.naturalWidth / imageData.naturalHeight);
+      cropper.setAspectRatio(ratio);
+    };
+
+    const handleBackdropClick = (event) => {
+      if (event.target === cropModal) {
+        handleCancel();
+      }
+    };
+
+    const handleKeydown = (event) => {
+      if (event.key === "Escape") {
+        handleCancel();
+      }
+    };
+
+    cropFilename.textContent = file.name;
+    cropProgress.textContent = `${index}/${total}`;
+    cropRatioSelect.value = "free";
+    cropImage.onload = () => {
+      if (!isActive) return;
+      destroyCropper();
+      const ratio = cropImage.naturalWidth / cropImage.naturalHeight || 1;
+      cropper = new Cropper(cropImage, {
+        aspectRatio: getSelectedAspectRatio(ratio),
+        autoCropArea: 0.9,
+        background: false,
+        checkOrientation: true,
+        viewMode: 1,
+        responsive: true,
+      });
+    };
+    cropImage.onerror = () => {
+      cleanup();
+      reject(new Error(`无法读取图片：${file.name}`));
+    };
+    cropImage.src = imageUrl;
+    setModalOpen(true);
+
+    confirmCropButton.addEventListener("click", handleConfirm);
+    skipCropButton.addEventListener("click", handleSkip);
+    cancelCropButton.addEventListener("click", handleCancel);
+    cancelCropSecondaryButton.addEventListener("click", handleCancel);
+    cropRatioSelect.addEventListener("change", handleRatioChange);
+    cropModal.addEventListener("click", handleBackdropClick);
+    document.addEventListener("keydown", handleKeydown);
   });
 }
 
@@ -211,8 +387,10 @@ async function handleUpload() {
 
   try {
     for (const [index, file] of selectedFiles.entries()) {
+      setStatus(`正在裁剪 ${index + 1}/${selectedFiles.length}：${file.name}`);
+      const canvas = await openCropDialog(file, index + 1, selectedFiles.length);
       setStatus(`正在压缩并上传 ${index + 1}/${selectedFiles.length}：${file.name}`);
-      const blob = await compressToWebP(file);
+      const blob = await compressCanvasToWebP(canvas, file.name);
       const key = buildKey(category, baseSlug, index + 1);
       const result = await uploadOne({ file, blob, key, token });
       renderResult({ file, key: result.key, url: result.url });
@@ -220,7 +398,8 @@ async function handleUpload() {
 
     setStatus(`上传完成：${selectedFiles.length} 张图片。`, "success");
   } catch (error) {
-    setStatus(error instanceof Error ? error.message : "上传失败，请稍后重试。", "error");
+    const isCancel = error instanceof UploadCancelledError;
+    setStatus(error instanceof Error ? error.message : "上传失败，请稍后重试。", isCancel ? "" : "error");
   } finally {
     uploadButton.disabled = selectedFiles.length === 0;
   }
