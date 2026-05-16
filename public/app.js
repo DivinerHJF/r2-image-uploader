@@ -15,6 +15,8 @@ const ASPECT_RATIOS = {
   "9:16": 9 / 16,
 };
 
+const IMAGE_EXTENSION_PATTERN = /\.(avif|bmp|gif|heic|heif|jpe?g|png|svg|webp)$/i;
+
 const tokenInput = document.querySelector("#token");
 const categorySelect = document.querySelector("#category");
 const slugInput = document.querySelector("#slug");
@@ -134,6 +136,10 @@ function moveSelectedFile(fromIndex, toIndex) {
   renderFileList();
 }
 
+function isImageFile(file) {
+  return file.type.startsWith("image/") || IMAGE_EXTENSION_PATTERN.test(file.name);
+}
+
 function renderFileList() {
   fileList.innerHTML = "";
   const isUploadDisabled = selectedFiles.length === 0 || isUploading;
@@ -185,7 +191,7 @@ function renderFileList() {
 }
 
 function selectFiles(files) {
-  selectedFiles = Array.from(files).filter((file) => file.type.startsWith("image/"));
+  selectedFiles = Array.from(files).filter(isImageFile);
   renderFileList();
 
   if (!selectedFiles.length) {
