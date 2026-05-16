@@ -1,0 +1,13 @@
+# Copy this file to wrangler.toml for local development only.
+# Do not commit wrangler.toml because it may contain project-specific settings.
+name = "r2-image-uploader"
+pages_build_output_dir = "public"
+compatibility_date = "2026-05-16"
+
+[[r2_buckets]]
+binding = "IMAGES"
+bucket_name = "YOUR_R2_BUCKET_NAME"
+
+[vars]
+PUBLIC_BASE_URL = "https://img.philohao.com"
+ALLOWED_ORIGIN = "https://img-admin.philohao.com"

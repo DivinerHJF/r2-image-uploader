@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>R2 图片上传器</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <section class="hero">
+        <p class="eyebrow">Cloudflare R2 · Hugo 图床</p>
+        <h1>在线图片上传器</h1>
+        <p class="description">
+          在浏览器本地压缩为 WebP，上传到 R2，并生成可直接粘贴到 Pages CMS / Hugo 文章中的 Markdown 图片链接。
+        </p>
+      </section>
+
+      <section class="card" aria-labelledby="upload-settings-title">
+        <h2 id="upload-settings-title">上传设置</h2>
+        <div class="form-grid">
+          <label class="field field-wide" for="token">
+            <span>上传 Token</span>
+            <input
+              id="token"
+              name="token"
+              type="password"
+              autocomplete="off"
+              placeholder="输入 Cloudflare Pages Secret 中配置的 UPLOAD_TOKEN"
+              required
+            />
+          </label>
+
+          <label class="field" for="category">
+            <span>分类</span>
+            <select id="category" name="category" required>
+              <option value="blog">blog</option>
+              <option value="travel">travel</option>
+              <option value="books">books</option>
+              <option value="misc">misc</option>
+            </select>
+          </label>
+
+          <label class="field" for="slug">
+            <span>Slug</span>
+            <input id="slug" name="slug" type="text" placeholder="例如 hugo-pages-cms" />
+            <small>留空时会根据第一个文件名自动生成安全 slug。</small>
+          </label>
+        </div>
+      </section>
+
+      <section class="card" aria-labelledby="drop-title">
+        <h2 id="drop-title">选择图片</h2>
+        <div id="drop-zone" class="drop-zone" tabindex="0" role="button" aria-describedby="drop-help">
+          <input id="file-input" type="file" accept="image/*" multiple hidden />
+          <div class="drop-icon" aria-hidden="true">⇪</div>
+          <p><strong>拖拽图片到这里</strong>，或点击选择文件</p>
+          <p id="drop-help" class="muted">支持多图上传；图片会先在本地缩放到最长边 1600px，并输出 WebP。</p>
+        </div>
+        <div id="file-list" class="file-list" aria-live="polite"></div>
+        <button id="upload-button" class="primary-button" type="button" disabled>上传图片</button>
+      </section>
+
+      <section class="card results-card" aria-labelledby="results-title">
+        <div class="results-header">
+          <div>
+            <h2 id="results-title">上传结果</h2>
+            <p class="muted">上传成功后会显示公开 URL 和 Markdown 链接。</p>
+          </div>
+          <button id="copy-markdown" class="secondary-button" type="button" disabled>复制 Markdown</button>
+        </div>
+        <div id="status" class="status" role="status" aria-live="polite"></div>
+        <div id="results" class="results"></div>
+      </section>
+    </main>
+
+    <script src="/app.js" type="module"></script>
+  </body>
+</html>
