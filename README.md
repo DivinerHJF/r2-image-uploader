@@ -9,10 +9,11 @@
 核心流程：
 
 1. 在浏览器中选择或拖拽图片。
-2. 浏览器本地通过 Canvas 将图片压缩并转换为 WebP。
-3. 按分类、年月、slug 和序号生成 R2 对象路径。
-4. 通过 Cloudflare Pages Function 写入 R2 bucket。
-5. 返回公开图片 URL 和 Markdown 图片链接。
+2. 浏览器本地弹出裁剪界面，可选择裁剪比例或跳过裁剪。
+3. 浏览器本地通过 Canvas 将裁剪结果压缩并转换为 WebP。
+4. 按分类、年月、slug 和序号生成 R2 对象路径。
+5. 通过 Cloudflare Pages Function 写入 R2 bucket。
+6. 返回公开图片 URL 和 Markdown 图片链接。
 
 生成的 R2 key 格式：
 
@@ -33,6 +34,22 @@ Markdown 示例：
 ```markdown
 ![hugo-pages-cms](https://img.philohao.com/blog/2026/05/hugo-pages-cms-01.webp)
 ```
+
+## 图片裁剪
+
+选择图片后会先在浏览器本地打开裁剪界面，支持单图和多图逐张处理。每张图片都必须先进入裁剪流程；只有点击“跳过裁剪”时，才会直接使用原图进入原有压缩上传流程。每张图片都可以选择“确认裁剪并上传”“跳过裁剪”或“取消”。
+
+支持的裁剪比例：
+
+- 自由裁剪
+- 原图比例
+- 1:1
+- 4:3
+- 3:2
+- 16:9
+- 9:16
+
+裁剪完全发生在浏览器本地：原图不会因为裁剪功能而额外上传到服务器。只有确认裁剪或跳过裁剪后生成的最终 WebP 文件会通过 `/api/upload` 上传到 R2。默认最大宽度和高度均为 1600px，WebP quality 为 0.82。
 
 ## 本地开发
 
@@ -169,8 +186,8 @@ openssl rand -base64 48
 2. 在“上传 Token”中输入 Cloudflare Pages Secret 配置的 token。
 3. 选择分类：`blog`、`travel`、`books` 或 `misc`。
 4. 输入 slug，例如 `hugo-pages-cms`。如果留空，会基于第一个原始文件名自动生成安全 slug。
-5. 拖拽或选择一张或多张图片。
-6. 点击“上传图片”。
+5. 拖拽或选择一张或多张图片；如果已经输入上传 Token，会立即逐张打开裁剪弹窗。
+6. 如果先选择图片再输入 Token，请点击“裁剪并上传”，然后在裁剪弹窗中为每张图片选择比例并确认，或点击“跳过裁剪”。
 7. 上传成功后复制 Markdown 链接。
 8. 将 Markdown 链接粘贴到 Pages CMS / Hugo 文章正文。
 

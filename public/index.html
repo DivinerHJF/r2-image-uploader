@@ -4,6 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>R2 图片上传器</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.css" />
     <link rel="stylesheet" href="/styles.css" />
   </head>
   <body>
@@ -55,10 +56,10 @@
           <input id="file-input" type="file" accept="image/*" multiple hidden />
           <div class="drop-icon" aria-hidden="true">⇪</div>
           <p><strong>拖拽图片到这里</strong>，或点击选择文件</p>
-          <p id="drop-help" class="muted">支持多图上传；图片会先在本地缩放到最长边 1600px，并输出 WebP。</p>
+          <p id="drop-help" class="muted">支持多图上传；选择图片后会先逐张进入本地裁剪流程，再缩放到最长边 1600px 并输出 WebP。</p>
         </div>
         <div id="file-list" class="file-list" aria-live="polite"></div>
-        <button id="upload-button" class="primary-button" type="button" disabled>上传图片</button>
+        <button id="upload-button" class="primary-button" type="button" disabled>裁剪并上传</button>
       </section>
 
       <section class="card results-card" aria-labelledby="results-title">
@@ -74,6 +75,45 @@
       </section>
     </main>
 
+    <div id="crop-modal" class="crop-modal" role="dialog" aria-modal="true" aria-labelledby="crop-title" hidden>
+      <div class="crop-dialog">
+        <div class="crop-header">
+          <div>
+            <p id="crop-progress" class="eyebrow crop-step">1/1</p>
+            <h2 id="crop-title">裁剪图片</h2>
+            <p id="crop-filename" class="muted crop-filename"></p>
+          </div>
+          <button id="cancel-crop" class="icon-button" type="button" aria-label="取消裁剪">×</button>
+        </div>
+
+        <div class="crop-body">
+          <div class="crop-preview">
+            <img id="crop-image" alt="待裁剪图片预览" />
+          </div>
+
+          <label class="field crop-ratio-field" for="crop-ratio">
+            <span>裁剪比例</span>
+            <select id="crop-ratio" name="crop-ratio">
+              <option value="free">自由裁剪</option>
+              <option value="original">原图比例</option>
+              <option value="1:1">1:1</option>
+              <option value="4:3">4:3</option>
+              <option value="3:2">3:2</option>
+              <option value="16:9">16:9</option>
+              <option value="9:16">9:16</option>
+            </select>
+          </label>
+        </div>
+
+        <div class="crop-actions">
+          <button id="confirm-crop" class="primary-button" type="button">确认裁剪并上传</button>
+          <button id="skip-crop" class="secondary-button" type="button">跳过裁剪</button>
+          <button id="cancel-crop-button" class="secondary-button danger-button" type="button">取消</button>
+        </div>
+      </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.js"></script>
     <script src="/app.js" type="module"></script>
   </body>
 </html>
