@@ -7,6 +7,11 @@
   "scripts": {
     "dev": "npx wrangler pages dev public --compatibility-date=2026-05-16",
     "build": "echo \"No build step required. Static files and Pages Functions are ready.\"",
-    "check": "tsc --noEmit && node --check public/app.js"
+    "check": "tsc --noEmit && node --check public/app.js",
+    "deploy": "wrangler deploy",
+    "preview": "wrangler dev"
+  },
+  "devDependencies": {
+    "wrangler": "^4.92.0"
   }
 }
