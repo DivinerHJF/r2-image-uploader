@@ -189,13 +189,9 @@ function selectFiles(files) {
     return;
   }
 
-  if (!tokenInput.value.trim()) {
-    setStatus(`已选择 ${selectedFiles.length} 张图片。可先拖拽排序；输入上传 Token 后点击“裁剪并上传”。`);
-    tokenInput.focus();
-    return;
-  }
-
-  setStatus(`已选择 ${selectedFiles.length} 张图片，可拖拽排序后点击“裁剪并上传”。`);
+  // 选择或拖入图片后只进入待上传列表，确保用户可以先排序；
+  // 裁剪、压缩和上传只能由“裁剪并上传”按钮显式触发。
+  setStatus(`已选择 ${selectedFiles.length} 张图片。请先拖拽排序，确认顺序后再点击“裁剪并上传”。`);
 }
 
 function loadImage(file) {
