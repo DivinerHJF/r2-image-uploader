@@ -92,6 +92,23 @@ input:focus, select:focus {
 
 small, .muted { color: var(--muted); }
 
+.inline-field {
+  min-width: 180px;
+}
+
+.copy-toolbar {
+  align-items: end;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+.copy-toolbar .secondary-button {
+  white-space: nowrap;
+}
+
+
 .drop-zone {
   align-items: center;
   border: 2px dashed #9fb3c8;
@@ -123,10 +140,51 @@ small, .muted { color: var(--muted); }
   background: #f8fafc;
   border: 1px solid var(--border);
   border-radius: 14px;
-  display: flex;
-  justify-content: space-between;
+  display: grid;
   gap: 12px;
+  grid-template-columns: auto minmax(0, 1fr) auto;
   padding: 12px 14px;
+}
+
+.file-item.is-dragging {
+  border-color: var(--accent);
+  opacity: 0.68;
+}
+
+.drag-handle {
+  color: var(--muted);
+  cursor: grab;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.file-details {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.file-details span {
+  overflow-wrap: anywhere;
+}
+
+.file-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.tiny-button {
+  background: #e5edff;
+  border: 0;
+  border-radius: 999px;
+  color: var(--accent-dark);
+  cursor: pointer;
+  font: inherit;
+  font-weight: 800;
+  height: 32px;
+  line-height: 1;
+  width: 32px;
 }
 
 .primary-button, .secondary-button {
@@ -177,7 +235,7 @@ button:disabled { cursor: not-allowed; opacity: 0.52; }
   display: block;
   overflow-x: auto;
   padding: 10px;
-  white-space: nowrap;
+  white-space: pre;
 }
 
 @media (max-width: 700px) {
@@ -185,7 +243,10 @@ button:disabled { cursor: not-allowed; opacity: 0.52; }
   .card { border-radius: 18px; padding: 18px; }
   .form-grid { grid-template-columns: 1fr; }
   .results-header { align-items: stretch; flex-direction: column; }
+  .copy-toolbar { align-items: stretch; flex-direction: column; }
   .secondary-button, .primary-button { width: 100%; }
+  .file-item { grid-template-columns: auto minmax(0, 1fr); }
+  .file-actions { grid-column: 2; }
 }
 
 body.modal-open { overflow: hidden; }
