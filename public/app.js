@@ -1,7 +1,10 @@
-const MAX_WIDTH = 1600;
-const MAX_HEIGHT = 1600;
-const WEBP_QUALITY = 0.82;
 const CATEGORIES = new Set(["blog", "travel", "books", "misc"]);
+const COMPRESSION_PRESETS = {
+  balanced: { label: "均衡", maxWidth: 1600, maxHeight: 1600, quality: 0.82 },
+  small: { label: "轻量", maxWidth: 1200, maxHeight: 1200, quality: 0.72 },
+  large: { label: "高清", maxWidth: 2200, maxHeight: 2200, quality: 0.9 },
+  original: { label: "仅转 WebP", maxWidth: Infinity, maxHeight: Infinity, quality: 0.86 },
+};
 const ASPECT_RATIOS = {
   free: NaN,
   original: null,
@@ -15,6 +18,9 @@ const ASPECT_RATIOS = {
 const tokenInput = document.querySelector("#token");
 const categorySelect = document.querySelector("#category");
 const slugInput = document.querySelector("#slug");
+const altTextInput = document.querySelector("#alt-text");
+const compressionPresetSelect = document.querySelector("#compression-preset");
+const namingModeSelect = document.querySelector("#naming-mode");
 const dropZone = document.querySelector("#drop-zone");
 const fileInput = document.querySelector("#file-input");
 const fileList = document.querySelector("#file-list");
@@ -22,6 +28,8 @@ const uploadButton = document.querySelector("#upload-button");
 const statusBox = document.querySelector("#status");
 const resultsBox = document.querySelector("#results");
 const copyMarkdownButton = document.querySelector("#copy-markdown");
+const copyFormatSelect = document.querySelector("#copy-format");
+const copySelectedFormatButton = document.querySelector("#copy-selected-format");
 const cropModal = document.querySelector("#crop-modal");
 const cropImage = document.querySelector("#crop-image");
 const cropRatioSelect = document.querySelector("#crop-ratio");
@@ -33,9 +41,10 @@ const cancelCropButton = document.querySelector("#cancel-crop");
 const cancelCropSecondaryButton = document.querySelector("#cancel-crop-button");
 
 let selectedFiles = [];
-let markdownLinks = [];
+let formatLinks = [];
 let cropper = null;
 let isUploading = false;
+let draggedFileIndex = null;
 
 class UploadCancelledError extends Error {
   constructor() {
@@ -60,16 +69,46 @@ function slugify(value) {
     .slice(0, 80) || "image";
 }
 
-function getDatePath(date = new Date()) {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  return `${year}/${month}`;
+function escapeHtml(value) {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
 }
 
-function buildKey(category, slug, index) {
+function getDateParts(date = new Date()) {
+  return {
+    year: String(date.getFullYear()),
+    month: String(date.getMonth() + 1).padStart(2, "0"),
+  };
+}
+
+function getTimestamp(date = new Date()) {
+  const pad = (value) => String(value).padStart(2, "0");
+  return `${date.getFullYear()}${pad(date.getMonth() + 1)}${pad(date.getDate())}-${pad(date.getHours())}${pad(date.getMinutes())}${pad(date.getSeconds())}`;
+}
+
+function buildKey({ category, baseSlug, originalName, index, mode }) {
   const safeCategory = CATEGORIES.has(category) ? category : "misc";
   const sequence = String(index).padStart(2, "0");
-  return `${safeCategory}/${getDatePath()}/${slug}-${sequence}.webp`;
+  const { year, month } = getDateParts();
+  const timestamp = getTimestamp();
+  const originalSlug = slugify(originalName);
+
+  switch (mode) {
+    case "category-sequence":
+      return `${safeCategory}/${baseSlug}-${sequence}.webp`;
+    case "date-category-sequence":
+      return `${year}/${month}/${safeCategory}/${baseSlug}-${sequence}.webp`;
+    case "category-timestamp":
+      return `${safeCategory}/${year}/${month}/${baseSlug}-${timestamp}-${sequence}.webp`;
+    case "category-original":
+      return `${safeCategory}/${year}/${month}/${originalSlug}-${sequence}.webp`;
+    case "category-date-sequence":
+    default:
+      return `${safeCategory}/${year}/${month}/${baseSlug}-${sequence}.webp`;
+  }
 }
 
 function formatBytes(bytes) {
@@ -78,21 +117,65 @@ function formatBytes(bytes) {
   return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
 }
 
+function formatSaving(originalBytes, compressedBytes) {
+  if (!originalBytes) return "-";
+  const delta = originalBytes - compressedBytes;
+  const percent = Math.abs((delta / originalBytes) * 100).toFixed(1);
+  if (delta >= 0) return `减少 ${formatBytes(delta)}（${percent}%）`;
+  return `增加 ${formatBytes(Math.abs(delta))}（${percent}%）`;
+}
+
+function moveSelectedFile(fromIndex, toIndex) {
+  if (toIndex < 0 || toIndex >= selectedFiles.length || fromIndex === toIndex) return;
+  const [file] = selectedFiles.splice(fromIndex, 1);
+  selectedFiles.splice(toIndex, 0, file);
+  renderFileList();
+}
+
 function renderFileList() {
   fileList.innerHTML = "";
-  uploadButton.disabled = selectedFiles.length === 0;
+  uploadButton.disabled = selectedFiles.length === 0 || isUploading;
 
-  selectedFiles.forEach((file) => {
+  selectedFiles.forEach((file, index) => {
     const item = document.createElement("div");
     item.className = "file-item";
+    item.draggable = !isUploading;
+    item.dataset.index = String(index);
+
+    const handle = document.createElement("span");
+    handle.className = "drag-handle";
+    handle.textContent = "☰";
+    handle.title = "拖拽排序";
+
+    const details = document.createElement("div");
+    details.className = "file-details";
 
     const name = document.createElement("span");
-    name.textContent = file.name;
+    name.textContent = `${String(index + 1).padStart(2, "0")}. ${file.name}`;
 
     const size = document.createElement("small");
     size.textContent = formatBytes(file.size);
+    details.append(name, size);
 
-    item.append(name, size);
+    const actions = document.createElement("div");
+    actions.className = "file-actions";
+
+    const upButton = document.createElement("button");
+    upButton.className = "tiny-button";
+    upButton.type = "button";
+    upButton.textContent = "↑";
+    upButton.disabled = index === 0 || isUploading;
+    upButton.addEventListener("click", () => moveSelectedFile(index, index - 1));
+
+    const downButton = document.createElement("button");
+    downButton.className = "tiny-button";
+    downButton.type = "button";
+    downButton.textContent = "↓";
+    downButton.disabled = index === selectedFiles.length - 1 || isUploading;
+    downButton.addEventListener("click", () => moveSelectedFile(index, index + 1));
+
+    actions.append(upButton, downButton);
+    item.append(handle, details, actions);
     fileList.appendChild(item);
   });
 }
@@ -106,14 +189,9 @@ function selectFiles(files) {
     return;
   }
 
-  if (!tokenInput.value.trim()) {
-    setStatus(`已选择 ${selectedFiles.length} 张图片。请输入上传 Token 后点击“裁剪并上传”。`);
-    tokenInput.focus();
-    return;
-  }
-
-  setStatus(`已选择 ${selectedFiles.length} 张图片，即将进入裁剪流程。`);
-  void handleUpload();
+  // 选择或拖入图片后只进入待上传列表，确保用户可以先排序；
+  // 裁剪、压缩和上传只能由“裁剪并上传”按钮显式触发。
+  setStatus(`已选择 ${selectedFiles.length} 张图片。请先拖拽排序，确认顺序后再点击“裁剪并上传”。`);
 }
 
 function loadImage(file) {
@@ -135,8 +213,12 @@ function loadImage(file) {
   });
 }
 
-function calculateSize(width, height) {
-  const ratio = Math.min(MAX_WIDTH / width, MAX_HEIGHT / height, 1);
+function getCompressionPreset() {
+  return COMPRESSION_PRESETS[compressionPresetSelect.value] || COMPRESSION_PRESETS.balanced;
+}
+
+function calculateSize(width, height, preset) {
+  const ratio = Math.min(preset.maxWidth / width, preset.maxHeight / height, 1);
   return {
     width: Math.round(width * ratio),
     height: Math.round(height * ratio),
@@ -157,8 +239,8 @@ function canvasFromImage(image) {
   return canvas;
 }
 
-function resizeCanvas(sourceCanvas) {
-  const { width, height } = calculateSize(sourceCanvas.width, sourceCanvas.height);
+function resizeCanvas(sourceCanvas, preset) {
+  const { width, height } = calculateSize(sourceCanvas.width, sourceCanvas.height, preset);
   const canvas = document.createElement("canvas");
   canvas.width = width;
   canvas.height = height;
@@ -172,7 +254,7 @@ function resizeCanvas(sourceCanvas) {
   return canvas;
 }
 
-function canvasToWebPBlob(canvas, fileName) {
+function canvasToWebPBlob(canvas, fileName, preset) {
   return new Promise((resolve, reject) => {
     canvas.toBlob(
       (blob) => {
@@ -183,14 +265,20 @@ function canvasToWebPBlob(canvas, fileName) {
         resolve(blob);
       },
       "image/webp",
-      WEBP_QUALITY,
+      preset.quality,
     );
   });
 }
 
 async function compressCanvasToWebP(sourceCanvas, fileName) {
-  const resizedCanvas = resizeCanvas(sourceCanvas);
-  return canvasToWebPBlob(resizedCanvas, fileName);
+  const preset = getCompressionPreset();
+  const resizedCanvas = resizeCanvas(sourceCanvas, preset);
+  const blob = await canvasToWebPBlob(resizedCanvas, fileName, preset);
+  return {
+    blob,
+    dimensions: `${resizedCanvas.width}×${resizedCanvas.height}`,
+    preset,
+  };
 }
 
 async function originalCanvasFromFile(file) {
@@ -275,15 +363,11 @@ function openCropDialog(file, index, total) {
     };
 
     const handleBackdropClick = (event) => {
-      if (event.target === cropModal) {
-        handleCancel();
-      }
+      if (event.target === cropModal) handleCancel();
     };
 
     const handleKeydown = (event) => {
-      if (event.key === "Escape") {
-        handleCancel();
-      }
+      if (event.key === "Escape") handleCancel();
     };
 
     cropFilename.textContent = file.name;
@@ -319,10 +403,6 @@ function openCropDialog(file, index, total) {
   });
 }
 
-async function getCanvasForUpload(file, index, total) {
-  return openCropDialog(file, index, total);
-}
-
 async function uploadOne({ file, blob, key, token }) {
   const formData = new FormData();
   formData.append("file", blob, key.split("/").at(-1));
@@ -331,9 +411,7 @@ async function uploadOne({ file, blob, key, token }) {
 
   const response = await fetch("/api/upload", {
     method: "POST",
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
+    headers: { Authorization: `Bearer ${token}` },
     body: formData,
   });
 
@@ -345,10 +423,29 @@ async function uploadOne({ file, blob, key, token }) {
   return payload;
 }
 
-function renderResult({ file, key, url }) {
-  const alt = key.split("/").at(-1).replace(/-\d+\.webp$/, "");
-  const markdown = `![${alt}](${url})`;
-  markdownLinks.push(markdown);
+function buildAltText(baseAlt, baseSlug, index, total) {
+  const fallback = baseAlt || baseSlug;
+  return total > 1 ? `${fallback} ${String(index).padStart(2, "0")}` : fallback;
+}
+
+function buildFormats({ alt, url }) {
+  const safeAlt = escapeHtml(alt);
+  return {
+    markdown: `![${alt}](${url})`,
+    html: `<img src="${url}" alt="${safeAlt}" loading="lazy">`,
+    hugo: `{{< figure src="${url}" alt="${safeAlt}" >}}`,
+  };
+}
+
+function setCopyButtonsEnabled() {
+  const hasLinks = formatLinks.length > 0;
+  copyMarkdownButton.disabled = !hasLinks;
+  copySelectedFormatButton.disabled = !hasLinks;
+}
+
+function renderResult({ file, key, url, alt, originalSize, compressedSize, dimensions, preset }) {
+  const formats = buildFormats({ alt, url });
+  formatLinks.push(formats);
 
   const item = document.createElement("article");
   item.className = "result-item";
@@ -358,9 +455,15 @@ function renderResult({ file, key, url }) {
   item.appendChild(title);
 
   [
+    ["压缩预设", `${preset.label} · quality ${preset.quality}`],
+    ["压缩后尺寸", dimensions],
+    ["体积对比", `${formatBytes(originalSize)} → ${formatBytes(compressedSize)}（${formatSaving(originalSize, compressedSize)}）`],
+    ["Alt", alt],
     ["R2 Key", key],
     ["URL", url],
-    ["Markdown", markdown],
+    ["Markdown", formats.markdown],
+    ["HTML", formats.html],
+    ["Hugo figure", formats.hugo],
   ].forEach(([label, value]) => {
     const field = document.createElement("div");
     field.className = "result-field";
@@ -376,7 +479,13 @@ function renderResult({ file, key, url }) {
   });
 
   resultsBox.appendChild(item);
-  copyMarkdownButton.disabled = markdownLinks.length === 0;
+  setCopyButtonsEnabled();
+}
+
+async function copyFormat(format) {
+  await navigator.clipboard.writeText(formatLinks.map((links) => links[format]).join("\n"));
+  const label = format === "html" ? "HTML" : format === "hugo" ? "Hugo figure" : "Markdown";
+  setStatus(`${label} 链接已复制。`, "success");
 }
 
 async function handleUpload() {
@@ -385,6 +494,8 @@ async function handleUpload() {
   const token = tokenInput.value.trim();
   const category = categorySelect.value;
   const baseSlug = slugify(slugInput.value.trim() || selectedFiles[0]?.name || "image");
+  const baseAlt = altTextInput.value.trim();
+  const namingMode = namingModeSelect.value;
 
   if (!token) {
     setStatus("请输入上传 Token。", "error");
@@ -398,20 +509,38 @@ async function handleUpload() {
   }
 
   isUploading = true;
-  uploadButton.disabled = true;
+  renderFileList();
   resultsBox.innerHTML = "";
-  markdownLinks = [];
-  copyMarkdownButton.disabled = true;
+  formatLinks = [];
+  setCopyButtonsEnabled();
 
   try {
     for (const [index, file] of selectedFiles.entries()) {
-      setStatus(`正在打开裁剪界面 ${index + 1}/${selectedFiles.length}：${file.name}`);
-      const canvas = await getCanvasForUpload(file, index + 1, selectedFiles.length);
-      setStatus(`正在压缩并上传 ${index + 1}/${selectedFiles.length}：${file.name}`);
-      const blob = await compressCanvasToWebP(canvas, file.name);
-      const key = buildKey(category, baseSlug, index + 1);
-      const result = await uploadOne({ file, blob, key, token });
-      renderResult({ file, key: result.key, url: result.url });
+      const sequence = index + 1;
+      setStatus(`正在打开裁剪界面 ${sequence}/${selectedFiles.length}：${file.name}`);
+      const canvas = await openCropDialog(file, sequence, selectedFiles.length);
+      setStatus(`正在浏览器端压缩 ${sequence}/${selectedFiles.length}：${file.name}`);
+      const compressed = await compressCanvasToWebP(canvas, file.name);
+      const key = buildKey({
+        category,
+        baseSlug,
+        originalName: file.name,
+        index: sequence,
+        mode: namingMode,
+      });
+      const alt = buildAltText(baseAlt, baseSlug, sequence, selectedFiles.length);
+      setStatus(`正在上传 ${sequence}/${selectedFiles.length}：${file.name}`);
+      const result = await uploadOne({ file, blob: compressed.blob, key, token });
+      renderResult({
+        file,
+        key: result.key,
+        url: result.url,
+        alt,
+        originalSize: file.size,
+        compressedSize: compressed.blob.size,
+        dimensions: compressed.dimensions,
+        preset: compressed.preset,
+      });
     }
 
     setStatus(`上传完成：${selectedFiles.length} 张图片。`, "success");
@@ -420,7 +549,7 @@ async function handleUpload() {
     setStatus(error instanceof Error ? error.message : "上传失败，请稍后重试。", isCancel ? "" : "error");
   } finally {
     isUploading = false;
-    uploadButton.disabled = selectedFiles.length === 0;
+    renderFileList();
   }
 }
 
@@ -451,8 +580,28 @@ fileInput.addEventListener("change", (event) => {
   selectFiles(event.target.files);
   event.target.value = "";
 });
-uploadButton.addEventListener("click", handleUpload);
-copyMarkdownButton.addEventListener("click", async () => {
-  await navigator.clipboard.writeText(markdownLinks.join("\n"));
-  setStatus("Markdown 链接已复制。", "success");
+fileList.addEventListener("dragstart", (event) => {
+  const item = event.target.closest(".file-item");
+  if (!item || isUploading) return;
+  draggedFileIndex = Number(item.dataset.index);
+  item.classList.add("is-dragging");
+  event.dataTransfer.effectAllowed = "move";
 });
+fileList.addEventListener("dragover", (event) => {
+  if (draggedFileIndex === null || isUploading) return;
+  event.preventDefault();
+  event.dataTransfer.dropEffect = "move";
+});
+fileList.addEventListener("drop", (event) => {
+  const item = event.target.closest(".file-item");
+  if (!item || draggedFileIndex === null || isUploading) return;
+  event.preventDefault();
+  moveSelectedFile(draggedFileIndex, Number(item.dataset.index));
+});
+fileList.addEventListener("dragend", () => {
+  draggedFileIndex = null;
+  fileList.querySelectorAll(".file-item").forEach((item) => item.classList.remove("is-dragging"));
+});
+uploadButton.addEventListener("click", handleUpload);
+copyMarkdownButton.addEventListener("click", () => copyFormat("markdown"));
+copySelectedFormatButton.addEventListener("click", () => copyFormat(copyFormatSelect.value));
