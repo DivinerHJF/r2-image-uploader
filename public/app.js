@@ -1,4 +1,4 @@
-const CATEGORIES = new Set(["blog", "travel", "books", "misc"]);
+const CATEGORIES = new Set(["blog", "travel", "books", "tailor", "misc"]);
 const COMPRESSION_PRESETS = {
   balanced: { label: "均衡", maxWidth: 1600, maxHeight: 1600, quality: 0.82 },
   small: { label: "轻量", maxWidth: 1200, maxHeight: 1200, quality: 0.72 },
