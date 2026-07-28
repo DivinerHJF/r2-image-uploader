@@ -6,8 +6,10 @@ export interface Env {
 }
 
 type UploadResponse =
-  | { ok: true; key: string; url: string }
+  | { ok: true; key: string; url: string; renamed: boolean }
   | { ok: false; error: string };
+
+type ConflictPolicy = "rename" | "overwrite" | "cancel";
 
 const ALLOWED_CONTENT_TYPES = new Set(["image/webp", "image/jpeg", "image/png", "image/gif"]);
 
@@ -57,6 +59,28 @@ function buildPublicUrl(baseUrl: string, key: string): string {
   return `${normalizedBaseUrl}/${encodedKey}`;
 }
 
+function parseConflictPolicy(value: FormDataEntryValue | null): ConflictPolicy {
+  if (value === "overwrite" || value === "cancel") return value;
+  return "rename";
+}
+
+function renamedKey(key: string, suffix: number): string {
+  return key.replace(/\.webp$/, `-${suffix}.webp`);
+}
+
+async function resolveKey(bucket: R2Bucket, requestedKey: string, policy: ConflictPolicy): Promise<string | null> {
+  if (policy === "overwrite") return requestedKey;
+  if (!(await bucket.head(requestedKey))) return requestedKey;
+  if (policy === "cancel") return null;
+
+  // Check only concrete candidate keys. Never list or scan the bucket.
+  for (let suffix = 2; suffix <= 999; suffix += 1) {
+    const candidate = renamedKey(requestedKey, suffix);
+    if (!(await bucket.head(candidate))) return candidate;
+  }
+  throw new Error("无法为同名文件生成可用路径。");
+}
+
 async function handlePost(context: EventContext<Env, string, Record<string, unknown>>): Promise<Response> {
   const headers = corsHeaders(context.env.ALLOWED_ORIGIN);
 
@@ -79,6 +103,7 @@ async function handlePost(context: EventContext<Env, string, Record<string, unkn
   const file = formData.get("file");
   const key = String(formData.get("key") || "");
   const contentType = String(formData.get("contentType") || "").toLowerCase();
+  const conflictPolicy = parseConflictPolicy(formData.get("conflictPolicy"));
 
   if (!(file instanceof File)) {
     return jsonResponse({ ok: false, error: "缺少图片文件。" }, 400, headers);
@@ -101,8 +126,19 @@ async function handlePost(context: EventContext<Env, string, Record<string, unkn
     return jsonResponse({ ok: false, error: "服务端缺少 PUBLIC_BASE_URL 配置。" }, 500, headers);
   }
 
+  let resolvedKey: string | null;
   try {
-    await context.env.IMAGES.put(key, file, {
+    resolvedKey = await resolveKey(context.env.IMAGES, key, conflictPolicy);
+  } catch {
+    return jsonResponse({ ok: false, error: "检查 R2 文件冲突失败。" }, 500, headers);
+  }
+
+  if (!resolvedKey) {
+    return jsonResponse({ ok: false, error: "目标路径已存在，已按设置取消这张图片。" }, 409, headers);
+  }
+
+  try {
+    await context.env.IMAGES.put(resolvedKey, file, {
       httpMetadata: {
         contentType,
       },
@@ -114,8 +150,9 @@ async function handlePost(context: EventContext<Env, string, Record<string, unkn
   return jsonResponse(
     {
       ok: true,
-      key,
-      url: buildPublicUrl(context.env.PUBLIC_BASE_URL, key),
+      key: resolvedKey,
+      url: buildPublicUrl(context.env.PUBLIC_BASE_URL, resolvedKey),
+      renamed: resolvedKey !== key,
     },
     200,
     headers,

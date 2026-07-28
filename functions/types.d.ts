@@ -1,6 +1,7 @@
 type R2PutValue = ReadableStream | ArrayBuffer | ArrayBufferView | string | Blob;
 
 interface R2Bucket {
+  head(key: string): Promise<unknown | null>;
   put(
     key: string,
     value: R2PutValue,

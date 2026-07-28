@@ -7,6 +7,12 @@
   "scripts": {
     "dev": "npx wrangler pages dev public --compatibility-date=2026-05-16",
     "build": "echo \"No build step required. Static files and Pages Functions are ready.\"",
-    "check": "tsc --noEmit && node --check public/app.js"
+    "check:js": "node scripts/check-js.mjs",
+    "check": "tsc --noEmit && npm run check:js",
+    "test:api": "node scripts/test-api.mjs"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.0",
+    "wrangler": "^4.114.0"
   }
 }
