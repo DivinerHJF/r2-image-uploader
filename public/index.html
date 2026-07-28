@@ -2,39 +2,100 @@
 <html lang="zh-CN">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>R2 图片上传器</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#f6f8fb" />
+    <title>Philo 图床</title>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.css" />
     <link rel="stylesheet" href="/styles.css" />
   </head>
   <body>
-    <main class="shell">
-      <section class="hero">
-        <p class="eyebrow">Cloudflare R2 · Hugo 图床</p>
-        <h1>在线图片上传器</h1>
-        <p class="description">
-          在浏览器本地压缩为 WebP，上传到 R2，并生成可直接粘贴到 Pages CMS / Hugo 文章中的 Markdown 图片链接。
-        </p>
+    <a class="skip-link" href="#main-content">跳到主要内容</a>
+
+    <header class="app-header">
+      <div class="shell header-inner">
+        <div class="brand">
+          <span class="brand-mark" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="M4 7.5A3.5 3.5 0 0 1 7.5 4h9A3.5 3.5 0 0 1 20 7.5v9a3.5 3.5 0 0 1-3.5 3.5h-9A3.5 3.5 0 0 1 4 16.5z"/><circle cx="9" cy="9" r="1.5"/><path d="m6.5 17 4.2-4.5 2.6 2.6 1.7-1.8 2.5 3.7"/></svg>
+          </span>
+          <div>
+            <h1>Philo 图床</h1>
+            <p>压缩为 WebP 并上传到 Cloudflare R2</p>
+          </div>
+        </div>
+        <button id="open-settings" class="header-button" type="button">
+          <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06-2.86 2.86-.06-.06A1.7 1.7 0 0 0 15 19.4a1.7 1.7 0 0 0-1 .6 1.7 1.7 0 0 0-.4 1.1V21H9.6v-.09A1.7 1.7 0 0 0 8.5 19.4a1.7 1.7 0 0 0-1.88.34l-.06.06-2.86-2.86.06-.06A1.7 1.7 0 0 0 4.1 15a1.7 1.7 0 0 0-.6-1 1.7 1.7 0 0 0-1.1-.4H2.3V9.6h.09A1.7 1.7 0 0 0 4.1 8.5a1.7 1.7 0 0 0-.34-1.88l-.06-.06L6.56 3.7l.06.06A1.7 1.7 0 0 0 8.5 4.1a1.7 1.7 0 0 0 1-.6 1.7 1.7 0 0 0 .4-1.1V2.3h4v.09A1.7 1.7 0 0 0 15 4.1a1.7 1.7 0 0 0 1.88-.34l.06-.06 2.86 2.86-.06.06A1.7 1.7 0 0 0 19.4 8.5a1.7 1.7 0 0 0 .6 1 1.7 1.7 0 0 0 1.1.4h.09v4h-.09A1.7 1.7 0 0 0 19.4 15Z"/></svg>
+          <span>设置</span>
+          <span id="token-indicator" class="token-dot" aria-label="Token 未设置"></span>
+        </button>
+      </div>
+    </header>
+
+    <main id="main-content" class="shell main-content">
+      <section class="card picker-card" aria-labelledby="picker-title">
+        <div class="section-heading">
+          <div>
+            <p class="step-label">第一步</p>
+            <h2 id="picker-title">选择图片</h2>
+          </div>
+          <span class="local-badge">
+            <svg aria-hidden="true" viewBox="0 0 24 24"><path d="m12 3 7 3v5c0 4.4-2.8 8.4-7 10-4.2-1.6-7-5.6-7-10V6z"/><path d="m9 12 2 2 4-4"/></svg>
+            本地处理
+          </span>
+        </div>
+
+        <div id="drop-zone" class="drop-zone" tabindex="0" role="button" aria-describedby="drop-help">
+          <input id="file-input" type="file" accept="image/*" multiple hidden />
+          <span class="drop-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="M12 16V4m0 0L7.5 8.5M12 4l4.5 4.5"/><path d="M5 13v5a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-5"/></svg>
+          </span>
+          <p class="mobile-picker-copy"><strong>选择照片</strong><span>从相册中选择一张或多张图片</span></p>
+          <p class="desktop-picker-copy"><strong>拖拽图片到这里，或点击选择文件</strong><span id="drop-help">支持 JPG、PNG、WebP 等常见图片格式，可分多次添加</span></p>
+        </div>
+
+        <div class="picker-actions">
+          <button id="choose-files" class="primary-button compact-button" type="button">
+            <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+            选择照片
+          </button>
+          <button id="take-photo" class="secondary-button compact-button" type="button">
+            <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M4 8.5h3l1.3-2h7.4l1.3 2h3v10H4z"/><circle cx="12" cy="13.5" r="3.3"/></svg>
+            拍照上传
+          </button>
+          <input id="camera-input" type="file" accept="image/*" capture="environment" hidden />
+        </div>
+
+        <div id="selection-panel" class="selection-panel" hidden>
+          <div class="selection-toolbar">
+            <div>
+              <h3>待上传图片</h3>
+              <p id="selection-summary" class="muted"></p>
+            </div>
+            <div class="toolbar-actions">
+              <button id="add-more" class="text-button" type="button">
+                <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+                继续添加
+              </button>
+              <button id="clear-files" class="text-button danger-text" type="button">清空全部</button>
+            </div>
+          </div>
+          <div id="file-list" class="file-list" role="list" aria-live="polite"></div>
+        </div>
       </section>
 
-      <section class="card" aria-labelledby="upload-settings-title">
-        <h2 id="upload-settings-title">上传设置</h2>
-        <div class="form-grid">
-          <label class="field field-wide" for="token">
-            <span>上传 Token</span>
-            <input
-              id="token"
-              name="token"
-              type="password"
-              autocomplete="off"
-              placeholder="输入 Cloudflare Pages Secret 中配置的 UPLOAD_TOKEN"
-              required
-            />
-          </label>
+      <section class="card settings-card" aria-labelledby="basic-settings-title">
+        <div class="section-heading">
+          <div>
+            <p class="step-label">第二步</p>
+            <h2 id="basic-settings-title">上传设置</h2>
+          </div>
+          <span id="saved-settings-hint" class="saved-hint">自动保存</span>
+        </div>
 
+        <div class="form-grid basic-grid">
           <label class="field" for="category">
             <span>分类</span>
-            <select id="category" name="category" required>
+            <select id="category" name="category">
               <option value="blog">blog</option>
               <option value="travel">travel</option>
               <option value="books">books</option>
@@ -42,129 +103,201 @@
               <option value="misc">misc</option>
             </select>
           </label>
-
           <label class="field" for="slug">
-            <span>Slug</span>
-            <input id="slug" name="slug" type="text" placeholder="例如 hugo-pages-cms" />
-            <small>留空时会根据第一个文件名自动生成安全 slug。</small>
+            <span>文件名 / Slug</span>
+            <input id="slug" name="slug" type="text" inputmode="url" placeholder="留空则使用首张图片名" maxlength="80" />
           </label>
-
-          <label class="field" for="alt-text">
-            <span>Alt 文本</span>
-            <input id="alt-text" name="alt-text" type="text" placeholder="例如 Hugo Pages CMS 截图" />
-            <small>留空时使用 slug；多图会自动追加序号。</small>
-          </label>
-
-          <label class="field" for="compression-preset">
-            <span>压缩预设</span>
-            <select id="compression-preset" name="compression-preset">
-              <option value="balanced">均衡：最长边 1600px · quality 0.82</option>
-              <option value="small">轻量：最长边 1200px · quality 0.72</option>
-              <option value="large">高清：最长边 2200px · quality 0.9</option>
-              <option value="original">仅转 WebP：保留尺寸 · quality 0.86</option>
-            </select>
-          </label>
-
-          <label class="field field-wide" for="naming-mode">
-            <span>上传前重命名规则</span>
-            <select id="naming-mode" name="naming-mode">
-              <option value="category-date-sequence">category/YYYY/MM/slug-序号.webp</option>
-              <option value="category-sequence">category/slug-序号.webp</option>
-              <option value="date-category-sequence">YYYY/MM/category/slug-序号.webp</option>
-              <option value="category-timestamp">category/YYYY/MM/slug-时间戳-序号.webp</option>
-              <option value="category-original">category/YYYY/MM/原文件名-序号.webp</option>
-            </select>
-            <small>所有 key 均在浏览器端生成；不会扫描 R2 bucket。</small>
+          <label class="field field-wide" for="alt-text">
+            <span>批量 Alt 文本</span>
+            <input id="alt-text" name="alt-text" type="text" placeholder="描述图片内容；多图会自动添加序号" maxlength="200" />
           </label>
         </div>
-      </section>
 
-      <section class="card" aria-labelledby="drop-title">
-        <h2 id="drop-title">选择图片</h2>
-        <div id="drop-zone" class="drop-zone" tabindex="0" role="button" aria-describedby="drop-help">
-          <input id="file-input" type="file" accept="image/*" multiple hidden />
-          <div class="drop-icon" aria-hidden="true">⇪</div>
-          <p><strong>拖拽图片到这里</strong>，或点击选择文件</p>
-          <p id="drop-help" class="muted">支持多图上传；选择后不会自动裁剪或上传，请先拖拽下方文件条目排序；可点击“修改并上传”逐张调整裁剪和 Alt，或点击“直接上传”按顺序上传。</p>
-        </div>
-        <div id="file-list" class="file-list" aria-live="polite"></div>
-        <div class="upload-actions">
-          <button id="upload-button" class="primary-button" type="button" disabled>修改并上传</button>
-          <button id="direct-upload-button" class="secondary-button" type="button" disabled>直接上传</button>
-        </div>
-      </section>
-
-      <section class="card results-card" aria-labelledby="results-title">
-        <div class="results-header">
-          <div>
-            <h2 id="results-title">上传结果</h2>
-            <p class="muted">上传成功后会显示体积对比、公开 URL 和多种复制格式。</p>
+        <div class="path-preview" aria-live="polite">
+          <div class="path-preview-label">
+            <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M3 7.5h7l2 2h9v9.5H3z"/></svg>
+            <span>预计保存路径</span>
           </div>
-          <div class="copy-toolbar">
-            <label class="field inline-field" for="copy-format">
-              <span>复制格式</span>
-              <select id="copy-format" name="copy-format">
-                <option value="markdown">Markdown</option>
-                <option value="html">HTML</option>
-                <option value="hugo">Hugo figure</option>
+          <code id="path-preview">blog/YYYY/MM/image-01.webp</code>
+          <small id="path-preview-note">选择图片后显示实际预览</small>
+        </div>
+
+        <details id="advanced-settings" class="advanced-settings">
+          <summary>
+            <span>
+              <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M4 7h10M18 7h2M4 17h2M10 17h10M14 4v6M6 14v6"/></svg>
+              高级设置
+            </span>
+            <span class="summary-hint">压缩、命名与冲突处理</span>
+          </summary>
+          <div class="advanced-content form-grid">
+            <label class="field" for="compression-preset">
+              <span>压缩预设</span>
+              <select id="compression-preset" name="compression-preset">
+                <option value="balanced">均衡 · 1600px · quality 0.82</option>
+                <option value="small">轻量 · 1200px · quality 0.72</option>
+                <option value="large">高清 · 2200px · quality 0.9</option>
+                <option value="original">仅转 WebP · 保留尺寸 · quality 0.86</option>
               </select>
             </label>
-            <button id="copy-selected-format" class="secondary-button" type="button" disabled>复制所选格式</button>
-            <button id="copy-markdown" class="secondary-button" type="button" disabled>一键复制全部 Markdown</button>
+            <label class="field" for="conflict-policy">
+              <span>遇到同名文件</span>
+              <select id="conflict-policy" name="conflict-policy">
+                <option value="rename">自动改名（推荐）</option>
+                <option value="cancel">取消该图片</option>
+                <option value="overwrite">覆盖已有文件</option>
+              </select>
+              <small>只有明确选择“覆盖”时才会替换已有文件。</small>
+            </label>
+            <label class="field field-wide" for="naming-mode">
+              <span>命名规则</span>
+              <select id="naming-mode" name="naming-mode">
+                <option value="category-date-sequence">category/YYYY/MM/slug-序号.webp</option>
+                <option value="category-sequence">category/slug-序号.webp</option>
+                <option value="date-category-sequence">YYYY/MM/category/slug-序号.webp</option>
+                <option value="category-timestamp">category/YYYY/MM/slug-时间戳-序号.webp</option>
+                <option value="category-original">category/YYYY/MM/原文件名-序号.webp</option>
+              </select>
+            </label>
           </div>
+        </details>
+
+        <div id="desktop-upload-actions" class="desktop-upload-actions" hidden>
+          <button id="upload-button" class="primary-button" type="button">
+            <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M12 16V4m0 0L7.5 8.5M12 4l4.5 4.5"/><path d="M5 13v5a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-5"/></svg>
+            编辑后上传
+          </button>
+          <div class="secondary-action-wrap">
+            <button id="direct-upload-button" class="secondary-button" type="button">跳过裁剪并上传</button>
+            <small>仍会按当前压缩设置转换为 WebP</small>
+          </div>
+          <button id="cancel-upload" class="danger-button" type="button" hidden>取消剩余任务</button>
         </div>
+      </section>
+
+      <section id="results-section" class="card results-card" aria-labelledby="results-title" hidden>
+        <div class="results-header">
+          <div>
+            <p class="step-label">第三步</p>
+            <h2 id="results-title">上传结果</h2>
+            <p id="upload-summary" class="muted">准备上传…</p>
+          </div>
+          <button id="retry-failed" class="secondary-button compact-button" type="button" hidden>重试失败项</button>
+        </div>
+
         <div id="status" class="status" role="status" aria-live="polite"></div>
+        <div id="batch-progress" class="batch-progress" hidden>
+          <div class="progress-track"><span id="progress-bar"></span></div>
+          <span id="progress-label">0 / 0</span>
+        </div>
+
+        <div id="copy-toolbar" class="copy-toolbar" hidden>
+          <label class="field inline-field" for="copy-format">
+            <span>输出格式</span>
+            <select id="copy-format" name="copy-format">
+              <option value="markdown">Markdown</option>
+              <option value="html">HTML</option>
+              <option value="hugo">Hugo figure</option>
+            </select>
+          </label>
+          <button id="copy-all" class="primary-button compact-button" type="button">复制全部</button>
+        </div>
         <div id="results" class="results"></div>
       </section>
     </main>
 
+    <div id="mobile-upload-bar" class="mobile-upload-bar" hidden>
+      <div class="mobile-upload-meta">
+        <strong id="mobile-selection-summary">已选择 0 张</strong>
+        <span id="mobile-upload-status">等待上传</span>
+      </div>
+      <div class="mobile-upload-actions">
+        <button id="mobile-direct-upload" class="mobile-secondary-button" type="button" aria-label="跳过裁剪并上传">跳过裁剪</button>
+        <button id="mobile-upload" class="primary-button" type="button">编辑后上传</button>
+        <button id="mobile-cancel-upload" class="danger-button" type="button" hidden>取消上传</button>
+      </div>
+    </div>
+
+    <dialog id="settings-dialog" class="settings-dialog" aria-labelledby="settings-title">
+      <div class="dialog-header">
+        <div>
+          <p class="step-label">安全设置</p>
+          <h2 id="settings-title">上传 Token</h2>
+        </div>
+        <button id="close-settings" class="icon-button" type="button" aria-label="关闭设置" title="关闭设置">
+          <svg aria-hidden="true" viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></svg>
+        </button>
+      </div>
+      <p class="dialog-description">Token 只用于请求上传接口，不会写入源码、日志或普通本地设置。</p>
+      <label class="field" for="token">
+        <span>上传 Token</span>
+        <div class="password-field">
+          <input id="token" name="token" type="password" autocomplete="off" placeholder="输入 UPLOAD_TOKEN" />
+          <button id="toggle-token" class="input-icon-button" type="button" aria-label="显示 Token" title="显示 Token">
+            <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z"/><circle cx="12" cy="12" r="2.5"/></svg>
+          </button>
+        </div>
+      </label>
+      <label class="check-field" for="remember-token">
+        <input id="remember-token" type="checkbox" checked />
+        <span><strong>本次会话记住</strong><small>保存在 sessionStorage，关闭当前浏览器会话后清除</small></span>
+      </label>
+      <p id="token-save-status" class="inline-status" role="status" aria-live="polite"></p>
+      <div class="dialog-actions">
+        <button id="clear-token" class="text-button danger-text" type="button">清除 Token</button>
+        <button id="save-settings" class="primary-button" type="button">保存并关闭</button>
+      </div>
+    </dialog>
+
     <div id="crop-modal" class="crop-modal" role="dialog" aria-modal="true" aria-labelledby="crop-title" hidden>
       <div class="crop-dialog">
-        <div class="crop-header">
-          <div>
-            <p id="crop-progress" class="eyebrow crop-step">1/1</p>
-            <h2 id="crop-title">修改图片</h2>
-            <p id="crop-filename" class="muted crop-filename"></p>
+        <header class="crop-topbar">
+          <button id="cancel-crop" class="crop-nav-button" type="button">取消</button>
+          <div class="crop-title-group">
+            <h2 id="crop-title">编辑图片</h2>
+            <p><span id="crop-progress">第 1 张，共 1 张</span><span aria-hidden="true"> · </span><span id="crop-filename"></span></p>
           </div>
-          <button id="cancel-crop" class="icon-button" type="button" aria-label="取消修改">×</button>
+          <button id="confirm-crop" class="crop-nav-button crop-done-button" type="button">完成</button>
+        </header>
+
+        <div class="crop-stage" role="img" aria-label="待裁剪图片预览">
+          <img id="crop-image" alt="" aria-hidden="true" />
+          <div id="large-image-hint" class="large-image-hint" hidden>正在优化大尺寸图片，处理时间可能稍长</div>
         </div>
 
-        <div class="crop-body">
-          <div class="crop-preview">
-            <img id="crop-image" alt="待裁剪图片预览" />
+        <div class="crop-controls">
+          <div class="ratio-scroller" role="group" aria-label="裁剪比例">
+            <button class="ratio-button is-active" type="button" data-ratio="free" aria-pressed="true">自由</button>
+            <button class="ratio-button" type="button" data-ratio="original" aria-pressed="false">原图</button>
+            <button class="ratio-button" type="button" data-ratio="1:1" aria-pressed="false">1:1</button>
+            <button class="ratio-button" type="button" data-ratio="4:3" aria-pressed="false">4:3</button>
+            <button class="ratio-button" type="button" data-ratio="3:2" aria-pressed="false">3:2</button>
+            <button class="ratio-button" type="button" data-ratio="16:9" aria-pressed="false">16:9</button>
+            <button class="ratio-button" type="button" data-ratio="9:16" aria-pressed="false">9:16</button>
           </div>
-
-          <div class="crop-settings">
-            <label class="field crop-control-field" for="crop-ratio">
-              <span>裁剪比例</span>
-              <select id="crop-ratio" name="crop-ratio">
-                <option value="free">自由裁剪</option>
-                <option value="original">原图比例</option>
-                <option value="1:1">1:1</option>
-                <option value="4:3">4:3</option>
-                <option value="3:2">3:2</option>
-                <option value="16:9">16:9</option>
-                <option value="9:16">9:16</option>
-              </select>
-            </label>
-
-            <label class="field crop-control-field" for="crop-alt">
-              <span>当前图片 Alt</span>
-              <input id="crop-alt" name="crop-alt" type="text" />
-              <small>默认按上传设置自动生成，可在上传前为当前图片单独修改。</small>
-            </label>
+          <div class="crop-tools" role="group" aria-label="旋转图片">
+            <button id="rotate-left" class="tool-button" type="button" aria-label="向左旋转 90 度" title="向左旋转 90 度">
+              <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M4 8V3m0 0h5M4 3l4 4"/><path d="M5.5 10A7 7 0 1 0 8 6.7"/></svg>
+              向左旋转
+            </button>
+            <button id="rotate-right" class="tool-button" type="button" aria-label="向右旋转 90 度" title="向右旋转 90 度">
+              <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M20 8V3m0 0h-5m5-0-4 4"/><path d="M18.5 10A7 7 0 1 1 16 6.7"/></svg>
+              向右旋转
+            </button>
           </div>
-        </div>
-
-        <div class="crop-actions">
-          <button id="confirm-crop" class="primary-button" type="button">确认修改并上传</button>
-          <button id="skip-crop" class="secondary-button" type="button">不裁剪，仅上传</button>
-          <button id="cancel-crop-button" class="secondary-button danger-button" type="button">取消</button>
+          <label class="field crop-alt-field" for="crop-alt">
+            <span>这张图片的 Alt 文本</span>
+            <input id="crop-alt" name="crop-alt" type="text" maxlength="200" />
+          </label>
+          <button id="skip-crop" class="secondary-button crop-skip-button" type="button">跳过本张裁剪</button>
+          <small class="crop-footnote">跳过裁剪仍会按当前设置压缩并转换为 WebP</small>
         </div>
       </div>
     </div>
 
+    <div id="toast" class="toast" role="status" aria-live="polite" aria-atomic="true" hidden></div>
+
     <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.js"></script>
-    <script src="/app.js" type="module"></script>
+    <script src="/js/app.js" type="module"></script>
   </body>
 </html>
