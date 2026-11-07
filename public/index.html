@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <meta name="theme-color" content="#f6f8fb" />
+    <meta name="theme-color" content="#f5f4f0" />
     <title>Philo 图床</title>
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.css" />
@@ -20,7 +20,7 @@
           </span>
           <div>
             <h1>Philo 图床</h1>
-            <p>压缩为 WebP 并上传到 Cloudflare R2</p>
+            <p>给生活的画面，一个安放之处</p>
           </div>
         </div>
         <button id="open-settings" class="header-button" type="button">
@@ -32,66 +32,25 @@
     </header>
 
     <main id="main-content" class="shell main-content">
+      <div class="workspace-intro"><div><p class="eyebrow">PHILO / IMAGE STUDIO</p><h2>把照片，放进故事里。</h2><p>选好照片，轻轻处理，再带回你的文字。</p></div><span class="intro-note">本地压缩 · 保留原图</span></div>
       <section class="card picker-card" aria-labelledby="picker-title">
-        <div class="section-heading">
-          <div>
-            <p class="step-label">第一步</p>
-            <h2 id="picker-title">选择图片</h2>
-          </div>
-          <span class="local-badge">
-            <svg aria-hidden="true" viewBox="0 0 24 24"><path d="m12 3 7 3v5c0 4.4-2.8 8.4-7 10-4.2-1.6-7-5.6-7-10V6z"/><path d="m9 12 2 2 4-4"/></svg>
-            本地处理
-          </span>
-        </div>
-
+        <div class="section-heading"><div><p class="eyebrow">YOUR PHOTOGRAPHS</p><h2 id="picker-title">照片工作台</h2></div><span class="local-badge">仅上传处理后的图片</span></div>
         <div id="drop-zone" class="drop-zone" tabindex="0" role="button" aria-describedby="drop-help">
           <input id="file-input" type="file" accept="image/*" multiple hidden />
-          <span class="drop-icon" aria-hidden="true">
-            <svg viewBox="0 0 24 24"><path d="M12 16V4m0 0L7.5 8.5M12 4l4.5 4.5"/><path d="M5 13v5a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-5"/></svg>
-          </span>
-          <p class="mobile-picker-copy"><strong>选择照片</strong><span>从相册中选择一张或多张图片</span></p>
-          <p class="desktop-picker-copy"><strong>拖拽图片到这里，或点击选择文件</strong><span id="drop-help">支持 JPG、PNG、WebP 等常见图片格式，可分多次添加</span></p>
+          <span class="drop-icon" aria-hidden="true"><svg viewBox="0 0 64 64"><rect x="11" y="13" width="38" height="42" rx="4" transform="rotate(-10 30 34)"/><rect x="20" y="8" width="35" height="44" rx="4"/><circle cx="43" cy="20" r="4"/><path d="m24 41 10-12 9 9 5-6 4 5"/></svg></span>
+          <p class="mobile-picker-copy"><strong>选几张喜欢的照片</strong><span>可多选，也能随时追加</span></p>
+          <p class="desktop-picker-copy"><strong>把照片放在这里</strong><span id="drop-help">拖入或点击选择，也支持粘贴图片</span></p>
         </div>
-
-        <div class="picker-actions">
-          <button id="choose-files" class="primary-button compact-button" type="button">
-            <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
-            选择照片
-          </button>
-          <button id="take-photo" class="secondary-button compact-button" type="button">
-            <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M4 8.5h3l1.3-2h7.4l1.3 2h3v10H4z"/><circle cx="12" cy="13.5" r="3.3"/></svg>
-            拍照上传
-          </button>
-          <input id="camera-input" type="file" accept="image/*" capture="environment" hidden />
-        </div>
-
+        <div class="picker-actions"><button id="choose-files" class="primary-button compact-button" type="button">选择照片 <span aria-hidden="true">＋</span></button><button id="take-photo" class="text-button compact-button" type="button">拍一张</button><input id="camera-input" type="file" accept="image/*" capture="environment" hidden /></div>
         <div id="selection-panel" class="selection-panel" hidden>
-          <div class="selection-toolbar">
-            <div>
-              <h3>待上传图片</h3>
-              <p id="selection-summary" class="muted"></p>
-            </div>
-            <div class="toolbar-actions">
-              <button id="add-more" class="text-button" type="button">
-                <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
-                继续添加
-              </button>
-              <button id="clear-files" class="text-button danger-text" type="button">清空全部</button>
-            </div>
-          </div>
+          <div class="selection-toolbar"><div><h3>这次的照片</h3><p id="selection-summary" class="muted"></p></div><div class="toolbar-actions"><button id="add-more" class="text-button" type="button">＋ 继续添加</button><button id="clear-files" class="text-button danger-text" type="button">清空</button></div></div>
           <div id="file-list" class="file-list" role="list" aria-live="polite"></div>
         </div>
       </section>
-
-      <section class="card settings-card" aria-labelledby="basic-settings-title">
-        <div class="section-heading">
-          <div>
-            <p class="step-label">第二步</p>
-            <h2 id="basic-settings-title">上传设置</h2>
-          </div>
-          <span id="saved-settings-hint" class="saved-hint">自动保存</span>
-        </div>
-
+      <aside class="settings-aside">
+        <details id="upload-options" class="card settings-card" open>
+          <summary class="options-heading"><span><span class="eyebrow">A LITTLE FINISHING</span><strong>上传选项</strong></span><span id="options-summary">均衡 · 1600px · blog</span><span class="options-chevron" aria-hidden="true">⌄</span></summary>
+          <div class="options-body"><span id="saved-settings-hint" class="saved-hint">自动保存</span>
         <div class="form-grid basic-grid">
           <label class="field" for="category">
             <span>分类</span>
@@ -104,11 +63,11 @@
             </select>
           </label>
           <label class="field" for="slug">
-            <span>文件名 / Slug</span>
+            <span>这组照片的名字</span>
             <input id="slug" name="slug" type="text" inputmode="url" placeholder="留空则使用首张图片名" maxlength="80" />
           </label>
           <label class="field field-wide" for="alt-text">
-            <span>批量 Alt 文本</span>
+            <span>图片描述</span>
             <input id="alt-text" name="alt-text" type="text" placeholder="描述图片内容；多图会自动添加序号" maxlength="200" />
           </label>
         </div>
@@ -163,23 +122,24 @@
         </details>
 
         <div id="desktop-upload-actions" class="desktop-upload-actions" hidden>
-          <button id="upload-button" class="primary-button" type="button">
+          <button id="upload-button" class="secondary-button" type="button">
             <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M12 16V4m0 0L7.5 8.5M12 4l4.5 4.5"/><path d="M5 13v5a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-5"/></svg>
-            编辑后上传
+            逐张裁剪后上传
           </button>
           <div class="secondary-action-wrap">
-            <button id="direct-upload-button" class="secondary-button" type="button">跳过裁剪并上传</button>
-            <small>仍会按当前压缩设置转换为 WebP</small>
+            <button id="direct-upload-button" class="primary-button" type="button">压缩并上传</button>
+            <small>保持原构图，自动压缩为 WebP</small>
           </div>
           <button id="cancel-upload" class="danger-button" type="button" hidden>取消剩余任务</button>
         </div>
-      </section>
-
+          </div>
+        </details>
+      </aside>
       <section id="results-section" class="card results-card" aria-labelledby="results-title" hidden>
         <div class="results-header">
           <div>
-            <p class="step-label">第三步</p>
-            <h2 id="results-title">上传结果</h2>
+            <p class="eyebrow">READY FOR YOUR STORY</p>
+            <h2 id="results-title">带回你的文章</h2>
             <p id="upload-summary" class="muted">准备上传…</p>
           </div>
           <button id="retry-failed" class="secondary-button compact-button" type="button" hidden>重试失败项</button>
@@ -196,6 +156,7 @@
             <span>输出格式</span>
             <select id="copy-format" name="copy-format">
               <option value="markdown">Markdown</option>
+              <option value="url">图片网址</option>
               <option value="html">HTML</option>
               <option value="hugo">Hugo figure</option>
             </select>
@@ -205,19 +166,10 @@
         <div id="results" class="results"></div>
       </section>
     </main>
-
     <div id="mobile-upload-bar" class="mobile-upload-bar" hidden>
-      <div class="mobile-upload-meta">
-        <strong id="mobile-selection-summary">已选择 0 张</strong>
-        <span id="mobile-upload-status">等待上传</span>
-      </div>
-      <div class="mobile-upload-actions">
-        <button id="mobile-direct-upload" class="mobile-secondary-button" type="button" aria-label="跳过裁剪并上传">跳过裁剪</button>
-        <button id="mobile-upload" class="primary-button" type="button">编辑后上传</button>
-        <button id="mobile-cancel-upload" class="danger-button" type="button" hidden>取消上传</button>
-      </div>
+      <div class="mobile-upload-meta"><strong id="mobile-selection-summary">已选择 0 张</strong><span id="mobile-upload-status">等待上传</span></div>
+      <div class="mobile-upload-actions"><button id="mobile-upload" class="mobile-secondary-button" type="button">逐张裁剪</button><button id="mobile-direct-upload" class="primary-button" type="button">压缩并上传</button><button id="mobile-cancel-upload" class="danger-button" type="button" hidden>取消上传</button><button id="mobile-copy" class="primary-button" type="button" hidden>复制全部链接</button></div>
     </div>
-
     <dialog id="settings-dialog" class="settings-dialog" aria-labelledby="settings-title">
       <div class="dialog-header">
         <div>

@@ -28,7 +28,7 @@ const validPreferences = {
   category: new Set(["blog", "travel", "books", "tailor", "misc"]),
   compression: new Set(Object.keys(COMPRESSION_PRESETS)),
   naming: new Set(["category-date-sequence", "category-sequence", "date-category-sequence", "category-timestamp", "category-original"]),
-  copyFormat: new Set(["markdown", "html", "hugo"]),
+  copyFormat: new Set(["markdown", "html", "hugo", "url"]),
 };
 
 let previouslyFocused = null;
@@ -155,6 +155,7 @@ export function getUploadSettings(items) {
 
 export function updatePathPreview(items) {
   const settings = getUploadSettings(items);
+  document.querySelector("#options-summary").textContent = `${settings.preset.label} · ${Number.isFinite(settings.preset.maxWidth) ? settings.preset.maxWidth + 'px' : '原尺寸'} · ${settings.category}`;
   const firstName = items[0]?.file.name || "image";
   elements.path.textContent = buildKey({
     category: settings.category,

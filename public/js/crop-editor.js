@@ -127,6 +127,7 @@ class CropEditor {
 
   async confirm() {
     if (!this.active || !this.cropper) return;
+    const session = this.active;
     this.setBusy(true);
     this.active.onProcessing?.();
     const options = { imageSmoothingEnabled: true, imageSmoothingQuality: "high" };
@@ -139,12 +140,13 @@ class CropEditor {
       const canvas = this.cropper.getCroppedCanvas(options);
       if (!canvas) throw new Error(`无法生成裁剪结果：${this.active.item.file.name}`);
       const processed = await processCroppedCanvas(canvas, this.active.item.file.name, this.active.preset);
+      if (this.active !== session) return;
       const payload = { kind: "processed", alt: this.currentAlt(), processed };
       const resolve = this.active.resolve;
       this.cleanup();
       resolve(payload);
     } catch (error) {
-      this.finishWithError(error);
+      if (this.active === session) this.finishWithError(error);
     }
   }
 

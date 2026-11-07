@@ -1,5 +1,6 @@
 import { appState, getCounts } from "./state.js";
 import { buildFormats, copyText, formatBytes, formatSaving, icon, prefersReducedMotion } from "./utils.js";
+import { createListView } from "./list-view.js";
 
 const elements = {
   section: document.querySelector("#results-section"),
@@ -17,6 +18,8 @@ const elements = {
 
 let retryCallback = () => {};
 let notify = () => {};
+const updateList = createListView(elements.results);
+const copyFeedback = new WeakMap();
 
 export function setStatus(message, type = "") {
   elements.status.textContent = message;
@@ -33,6 +36,7 @@ function successfulItems() {
 
 function updateSummary() {
   const counts = getCounts();
+  document.querySelector("#results-title").textContent = counts.success ? "带回你的文章" : "处理进度";
   const completed = counts.success + counts.error + counts.cancelled;
   const percent = counts.total ? (completed / counts.total) * 100 : 0;
   elements.progress.hidden = !appState.isUploading;
@@ -96,6 +100,15 @@ function makeResultCard(item) {
   copy.dataset.action = "copy-one";
   copy.dataset.id = item.id;
   copy.textContent = `复制 ${formatLabel(elements.copyFormat.value)}`;
+  const urlCopy = document.createElement("button");
+  urlCopy.type = "button";
+  urlCopy.className = "secondary-button compact-button result-url-button";
+  urlCopy.dataset.action = "copy-url";
+  urlCopy.dataset.id = item.id;
+  urlCopy.textContent = "复制图片网址";
+  const actions = document.createElement("div");
+  actions.className = "result-actions";
+  actions.append(copy, urlCopy);
 
   const details = document.createElement("details");
   details.className = "result-details";
@@ -115,30 +128,42 @@ function makeResultCard(item) {
   ].forEach(([label, value]) => grid.appendChild(makeDetail(label, value)));
   details.append(summary, grid);
 
-  card.append(image, main, copy, details);
+  card.append(image, main, actions, details);
   return card;
 }
 
 function formatLabel(format) {
+  if (format === "url") return "图片网址";
   if (format === "html") return "HTML";
   if (format === "hugo") return "Hugo figure";
   return "Markdown";
 }
 
 async function copyItems(items, format, button) {
-  const text = items.map((item) => item.result.formats[format]).join("\n");
+  const text = items.map((item) => format === "url" ? item.result.url : item.result.formats[format]).join("\n");
   await copyText(text);
-  const original = button.textContent;
+  const previous = copyFeedback.get(button);
+  if (previous) clearTimeout(previous.timer);
+  const original = previous?.label || button.textContent;
   button.textContent = "已复制";
   notify(`${formatLabel(format)} 链接已复制。`, "success");
-  window.setTimeout(() => { button.textContent = original; }, 1200);
+  const timer = window.setTimeout(() => {
+    button.textContent = original;
+    copyFeedback.delete(button);
+  }, 1200);
+  copyFeedback.set(button, { label: original, timer });
 }
 
 export function renderResults() {
-  if (!appState.uploadStarted) return;
+  if (!appState.uploadStarted || !appState.items.length) {
+    elements.section.hidden = true;
+    updateList([], () => "", makeResultCard);
+    return;
+  }
   showResults();
   updateSummary();
-  elements.results.replaceChildren(...successfulItems().map(makeResultCard));
+  updateList(successfulItems(),
+    (item) => JSON.stringify([item.result.url, item.result.alt, elements.copyFormat.value]), makeResultCard);
 }
 
 export function scrollToResults() {
@@ -149,21 +174,21 @@ export function initializeResults({ onRetryFailed, onNotify } = {}) {
   retryCallback = onRetryFailed || (() => {});
   notify = onNotify || (() => {});
   elements.retryFailed.addEventListener("click", retryCallback);
-  elements.copyAll.addEventListener("click", async () => {
+  for (const button of [elements.copyAll, document.querySelector("#mobile-copy")]) button.addEventListener("click", async () => {
     try {
-      await copyItems(successfulItems(), elements.copyFormat.value, elements.copyAll);
+      await copyItems(successfulItems(), elements.copyFormat.value, button);
     } catch (error) {
       notify(error instanceof Error ? error.message : "复制失败。", "error");
     }
   });
   elements.copyFormat.addEventListener("change", renderResults);
   elements.results.addEventListener("click", async (event) => {
-    const button = event.target.closest('button[data-action="copy-one"]');
+    const button = event.target.closest('button[data-action="copy-one"], button[data-action="copy-url"]');
     if (!button) return;
     const item = appState.items.find((candidate) => candidate.id === button.dataset.id);
     if (!item?.result) return;
     try {
-      await copyItems([item], elements.copyFormat.value, button);
+      await copyItems([item], button.dataset.action === "copy-url" ? "url" : elements.copyFormat.value, button);
     } catch (error) {
       notify(error instanceof Error ? error.message : "复制失败。", "error");
     }

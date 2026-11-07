@@ -1,6 +1,7 @@
 import { STATUS_LABELS } from "./config.js";
 import { addFiles, appState, clearItems, moveItem, moveItemTo, removeItem, totalOriginalBytes } from "./state.js";
 import { formatBytes, icon } from "./utils.js";
+import { createListView } from "./list-view.js";
 
 const elements = {
   dropZone: document.querySelector("#drop-zone"),
@@ -29,6 +30,7 @@ let draggedId = "";
 let changeCallback = () => {};
 let retryCallback = () => {};
 let notify = () => {};
+const updateList = createListView(elements.list);
 
 function makeButton({ action, id, label, title = label, iconName, disabled = false, danger = false }) {
   const button = document.createElement("button");
@@ -131,11 +133,19 @@ export function renderFiles() {
   elements.mobileStatus.textContent = active ? STATUS_LABELS[active.status] : appState.isUploading ? "正在处理" : "等待上传";
 
   const noActionableItems = !appState.items.some((item) => item.status !== "success");
+  document.body.classList.toggle("has-images", hasItems);
+  document.body.classList.toggle("is-uploading", appState.isUploading);
+  document.body.classList.toggle("upload-complete", hasItems && noActionableItems);
+  const copy = document.querySelector("#mobile-copy");
+  copy.hidden = !hasItems || !noActionableItems;
+  if (hasItems && noActionableItems) elements.mobileStatus.textContent = "链接已就绪";
   for (const button of elements.uploadButtons) {
     button.disabled = !hasItems || appState.isUploading || noActionableItems;
   }
 
-  elements.list.replaceChildren(...appState.items.map(renderItem));
+  updateList(appState.items,
+    (item, index) => JSON.stringify([index, appState.items.length, appState.isUploading, item.status, item.error, item.previewUrl, item.result?.url]),
+    renderItem);
 }
 
 function handleNewFiles(files) {
@@ -157,6 +167,12 @@ export function initializeFiles({ onChange, onRetry, onNotify } = {}) {
   changeCallback = onChange || (() => {});
   retryCallback = onRetry || (() => {});
   notify = onNotify || (() => {});
+  document.addEventListener("paste", (event) => {
+    if (appState.isUploading || document.body.classList.contains("modal-open") ||
+        event.target.closest?.("input, textarea, [contenteditable=true]")) return;
+    const images = [...(event.clipboardData?.files || [])].filter((file) => file.type.startsWith("image/"));
+    if (images.length) { event.preventDefault(); handleNewFiles(images); }
+  });
 
   elements.choose.addEventListener("click", openFilePicker);
   elements.addMore.addEventListener("click", openFilePicker);

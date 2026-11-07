@@ -38,6 +38,7 @@ function renderAll() {
 }
 
 function setUploadingControls(isUploading) {
+  for (const input of document.querySelectorAll("#upload-options input, #upload-options select")) input.disabled = isUploading;
   controls.cancel.hidden = !isUploading;
   controls.mobileCancel.hidden = !isUploading;
   controls.mobileUpload.hidden = isUploading;
@@ -111,6 +112,7 @@ async function processItem(item, position, total, token) {
     }
   }
 
+  if (appState.cancelRequested) throw new DOMException("已取消上传", "AbortError");
   item.status = "uploading";
   setStatus(`正在上传 ${position} / ${total}：${item.file.name}`);
   renderAll();
@@ -175,6 +177,8 @@ async function handleUpload({ mode = "edit", itemIds = null } = {}) {
   candidates.forEach((item) => {
     const globalIndex = appState.items.indexOf(item) + 1;
     if (!item.uploadSpec) item.uploadSpec = createUploadSpec(item, settings, mode, globalIndex, appState.items.length);
+    // Retry uses today's explicit conflict choice, never a stale overwrite choice.
+    item.uploadSpec.conflictPolicy = settings.conflictPolicy;
     if (item.status === "error" || item.status === "cancelled") resetItemForRetry(item);
   });
 
@@ -263,6 +267,12 @@ controls.cancel.addEventListener("click", cancelUpload);
 controls.mobileCancel.addEventListener("click", cancelUpload);
 
 window.addEventListener("pagehide", revokeAllPreviews);
+
+const compactOptions = matchMedia("(max-width: 900px)");
+const optionsPanel = document.querySelector("#upload-options");
+const fitOptions = () => { optionsPanel.open = !compactOptions.matches; };
+fitOptions();
+compactOptions.addEventListener("change", fitOptions);
 
 setUploadingControls(false);
 renderAll();

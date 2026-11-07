@@ -83,6 +83,7 @@ export function buildAltText(baseAlt, baseSlug, index, total) {
 export function buildFormats({ alt, url }) {
   const safeAlt = escapeHtml(alt);
   return {
+    url,
     markdown: `![${alt}](${url})`,
     html: `<img src="${url}" alt="${safeAlt}" loading="lazy">`,
     hugo: `{{< figure src="${url}" alt="${safeAlt}" >}}`,
